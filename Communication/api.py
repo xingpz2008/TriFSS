@@ -1,3 +1,4 @@
+import random
 from socket import *
 import pickle
 import Pythonic_TriFSS.Configs.communication as config
@@ -48,7 +49,7 @@ def listen(addr, port, LOG=config.LOG) -> socket:
 
 def local_send(data, filename: str = None, LOG=config.LOG):
     if filename is None:
-        filename = config.default_filepath + str((time.time()))
+        filename = config.default_filepath + str((time.time())) + str(random.random())
     with open(filename, "wb+") as f:
         pickle.dump(data, f)
         if LOG:

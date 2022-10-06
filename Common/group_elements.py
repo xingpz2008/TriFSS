@@ -78,6 +78,32 @@ class GroupElements(object):
         else:
             raise NotImplementedError("Not supported at this data type")
 
+    def __gt__(self, other):
+        assert (type(other) in [GroupElements, int, float]), "Unsupported data type for comparison."
+        if type(other) is GroupElements:
+            assert ((other.bitlen == self.bitlen) and (other.scalefactor == self.scalefactor)), "Comparison can only " \
+                                                                                                "be applied when in " \
+                                                                                                "the same parameters "
+            self.__update__real_value__()
+            other.__update__real_value__()
+            return self.__init_real_value > other.__init_real_value
+        else:
+            new_other = GroupElements(other, self.bitlen, self.scalefactor)
+            return self.__gt__(new_other)
+
+    def __lt__(self, other):
+        assert (type(other) in [GroupElements, int, float]), "Unsupported data type for comparison."
+        if type(other) is GroupElements:
+            assert ((other.bitlen == self.bitlen) and (other.scalefactor == self.scalefactor)), "Comparison can only " \
+                                                                                                "be applied when in " \
+                                                                                                "the same parameters "
+            self.__update__real_value__()
+            other.__update__real_value__()
+            return self.__init_real_value < other.__init_real_value
+        else:
+            new_other = GroupElements(other, self.bitlen, self.scalefactor)
+            return self.__lt__(new_other)
+
     def __getitem__(self, item):
         assert (self.bitlen >= item >= 0), f"No index at {item}"
         return self.value >> item & 1

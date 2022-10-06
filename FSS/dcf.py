@@ -9,12 +9,13 @@ from Pythonic_TriFSS.Communication.semi_honest_party import SemiHonestParty
 
 
 def keygenDCF(x: GroupElements, party: TrustedDealer, inverse=False, filename=None, sec_para=config.sec_para,
-              DEBUG=config.DEBUG) -> tuple:
+              local_transfer=True, DEBUG=config.DEBUG) -> [DCFKey, DCFKey]:
     """
     TODO: Correlated Randomness?
     TODO: DIF
     TODO: Payload
     This functions returns DCF Key for if input < x, payload = 1 currently
+    :param local_transfer:
     :param filename:
     :param party:
     :param x:
@@ -30,7 +31,9 @@ def keygenDCF(x: GroupElements, party: TrustedDealer, inverse=False, filename=No
     k0 = DCFKey()
     k1 = DCFKey()
     k0.seed = alpha_0
+    k0.inverse = inverse
     k1.seed = alpha_1
+    k1.inverse = inverse
     action_bit_l = 0
     action_bit_r = 1
     level_seed_l = alpha_0.value
@@ -85,18 +88,18 @@ def keygenDCF(x: GroupElements, party: TrustedDealer, inverse=False, filename=No
                   f'BR = {reconstructed_seed >> 1 & 1}, '
                   f'CR = {reconstructed_seed & 1}, ')
             print(f'Current choice is {x[x.bitlen - 1 - i]}')
-    party.send(k0, name=filename)
-    party.send(k1, name=filename)
-    party.eliminate_start_maker('keygenDPF', 'offline')
+    if local_transfer:
+        party.send(k0, name=filename)
+        party.send(k1, name=filename)
+    party.eliminate_start_maker('keygenDCF', 'offline')
     return k0, k1
 
 
-def evalDCF(party: SemiHonestParty, x: GroupElements, key: DCFKey, inverse=False, filename=None,
+def evalDCF(party: SemiHonestParty, x: GroupElements, key: DCFKey = None, filename=None,
             sec_para=config.sec_para, DEBUG=config.DEBUG):
     """
     This function evaluates DCF at key with public value x
     :param filename:
-    :param inverse:
     :param party:
     :param x:
     :param key:
@@ -111,10 +114,11 @@ def evalDCF(party: SemiHonestParty, x: GroupElements, key: DCFKey, inverse=False
         key = party.local_recv(filename=filename)
     level_seed = key.seed.value
     action_bit = party.party_id
+    inverse = key.inverse
     identifier_result = 0
     for i in range(x.bitlen):
         if DEBUG:
-            print(f'[INFO] {i} Iteration for party {party}:')
+            print(f'[INFO] {i} Iteration for party {party.party_id}:')
             print(f'level seed = {level_seed}')
             print(f'Action bit = {action_bit}')
         # We first expand the seed by PRG
@@ -137,4 +141,4 @@ def evalDCF(party: SemiHonestParty, x: GroupElements, key: DCFKey, inverse=False
             print(f'Identifier = {identifier}')
         identifier_result = identifier_result ^ identifier
     party.eliminate_start_maker('evalDCF')
-    return action_bit ^ identifier_result
+    return action_bit ^ identifier_result ^ inverse

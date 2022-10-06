@@ -6,6 +6,7 @@ x0 = GroupElements(-5.5, scale=10, bitlen=64, DEBUG=True)
 x1 = GroupElements(-1, scale=10, bitlen=64, DEBUG=True)
 _x = GroupElements(13, scale=10, bitlen=64, DEBUG=True)
 
+comp = x > 0
 
 z2 = x0 * x1
 

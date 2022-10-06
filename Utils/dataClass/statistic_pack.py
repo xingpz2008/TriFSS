@@ -65,8 +65,8 @@ class statistic_pack(object):
 
     def print(self):
         print('\n==========Statistic START==========')
-        print('[WARNING] Total time consumption is not reliable, we recommend to set time maker manually'
-              'by calling <party>.set_start_maker() & <party>.eliminate_start_maker() at target function!')
+        print('[WARNING] Total time consumption is currently not reliable, we recommend to set time maker manually'
+              ' by calling <party>.set_start_maker() & <party>.eliminate_start_maker() at target function!')
         print(f'Total Offline Time (Unreliable) = {self.__offline_time} s')
         print(f'Total Online Time (Unreliable) = {self.__online_time} s')
         print(f'Bytes Sent = {self.__send_bytes}')
