@@ -15,3 +15,13 @@ class DIFKey(object):
     def __int__(self):
         self.interval_0_key = None
         self.interval_1_key = None
+
+
+class Correlated_DPF_Key(DPFKey):
+    def __init__(self):
+        super().__init__()
+        self.r = None
+
+    def init_from_DPFKey(self, Key: DPFKey):
+        self.seed = Key.seed
+        self.CW_List = Key.CW_List

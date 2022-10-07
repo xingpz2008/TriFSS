@@ -1,6 +1,8 @@
-.tri
-.pyc
+*.tri
+*.pyc
 .DS_Store
 
-__pycache__
+**/__pycache__
 /Assets/
+*/__pycache__
+/.idea/

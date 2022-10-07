@@ -12,7 +12,6 @@ def keygenDCF(x: GroupElements, party: TrustedDealer, inverse=False, filename=No
               local_transfer=True, DEBUG=config.DEBUG) -> [DCFKey, DCFKey]:
     """
     TODO: Correlated Randomness?
-    TODO: DIF
     TODO: Payload
     This functions returns DCF Key for if input < x, payload = 1 currently
     :param local_transfer:
@@ -91,7 +90,7 @@ def keygenDCF(x: GroupElements, party: TrustedDealer, inverse=False, filename=No
     if local_transfer:
         party.send(k0, name=filename)
         party.send(k1, name=filename)
-    party.eliminate_start_maker('keygenDCF', 'offline')
+    party.eliminate_start_marker('keygenDCF', 'offline')
     return k0, k1
 
 
@@ -140,5 +139,5 @@ def evalDCF(party: SemiHonestParty, x: GroupElements, key: DCFKey = None, filena
             print(f'pre level seed = {pre_level_seed}')
             print(f'Identifier = {identifier}')
         identifier_result = identifier_result ^ identifier
-    party.eliminate_start_maker('evalDCF')
-    return action_bit ^ identifier_result ^ inverse
+    party.eliminate_start_marker('evalDCF')
+    return action_bit ^ identifier_result ^ (inverse * party.party_id)

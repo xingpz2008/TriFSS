@@ -17,6 +17,8 @@ def generate_cross_term_triplet(bitlen=config.bitlen, scale=config.scalefactor,
     :param scale:
     :return:
     """
+    if executor is not None:
+        executor.set_start_marker('B2A', 'offline')
     a = sampleGroupElements(bitlen, scale, config.seed)
     b = sampleGroupElements(bitlen, scale, config.seed)
     r = sampleGroupElements(bitlen, scale, config.seed)
@@ -25,6 +27,7 @@ def generate_cross_term_triplet(bitlen=config.bitlen, scale=config.scalefactor,
     if executor is not None:
         executor.send(data=CrossTermTriplets(a, z), name=filename)
         executor.send(data=CrossTermTriplets(b, r), name=filename)
+        executor.eliminate_start_marker('B2A', 'offline')
     else:
         return CrossTermTriplets(a, z), CrossTermTriplets(b, r)
 
@@ -72,5 +75,5 @@ def B2A(x: int, triplet, party: SemiHonestParty, bitlen=config.bitlen, scale=con
               f'{(x_in_Group - mult_result)._GroupElements__init_real_value}')
         print('==========DEBUG END==========\n')
     result = x_in_Group - (mult_result * 2)
-    party.eliminate_start_maker(func='B2A', func_type='online')
+    party.eliminate_start_marker(func='B2A', func_type='online')
     return result

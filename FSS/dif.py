@@ -24,7 +24,7 @@ def keygenDIF(interval: (GroupElements, GroupElements), party: TrustedDealer, fi
     """
     # We first confirm the +/- of our interval
     assert (interval[1] > interval[0]), 'Invalid Interval Sequence'
-    inverse = (interval[0] < 0 and interval[1] > 0)
+    inverse = ((interval[0] < 0) and (interval[1] > 0))
     party.set_start_marker('keygenDIF', 'offline')
     k0 = DIFKey()
     k1 = DIFKey()
@@ -34,7 +34,7 @@ def keygenDIF(interval: (GroupElements, GroupElements), party: TrustedDealer, fi
                                                      sec_para=sec_para, DEBUG=DEBUG)
     party.send(k0, filename)
     party.send(k1, filename)
-    party.eliminate_start_maker('keygenDIF', 'offline')
+    party.eliminate_start_marker('keygenDIF', 'offline')
     return k0, k1
 
 
@@ -64,5 +64,5 @@ def evalDIF(party: SemiHonestParty, x: GroupElements, key: DIFKey = None, filena
         print(f'==========DEBUG INFO for Party {party.party_id}==========')
         print(f'Interval 0 Res = {interval_0_result}')
         print(f'Interval 1 Res = {interval_1_result}')
-    party.eliminate_start_maker('evalDIF')
+    party.eliminate_start_marker('evalDIF')
     return result

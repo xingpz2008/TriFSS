@@ -26,7 +26,7 @@ class TrustedDealer(object):
         else:
             self.statistic_pack.add_function_offline_start_maker(func)
 
-    def eliminate_start_maker(self, func: str, func_type: str = 'online'):
+    def eliminate_start_marker(self, func: str, func_type: str = 'online'):
         assert (func_type in ['online', 'offline']), 'Invalid function type'
         if func_type == 'online':
             self.statistic_pack.eliminate_online_maker(func)

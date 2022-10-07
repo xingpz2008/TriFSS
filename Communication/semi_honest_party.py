@@ -18,6 +18,7 @@ class SemiHonestParty(object):
         self.recv_socket = api.listen(self.addr, self.recv_port, LOG)
         self.threadFactory = TriFSSThreadFactory()
         self.LOG = LOG
+        self.DPF_Dict = dict()
 
     def send(self, data):
         api.send(self.partner_addr, self.partner_recv_port, data, self.LOG)
@@ -40,7 +41,7 @@ class SemiHonestParty(object):
         else:
             self.statistic_pack.add_function_offline_start_maker(func)
 
-    def eliminate_start_maker(self, func: str, func_type: str = 'online'):
+    def eliminate_start_marker(self, func: str, func_type: str = 'online'):
         assert (func_type in ['online', 'offline']), 'Invalid function type'
         if func_type == 'online':
             self.statistic_pack.eliminate_online_maker(func)

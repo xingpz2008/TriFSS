@@ -3,18 +3,20 @@ from Pythonic_TriFSS.Common.group_elements import GroupElements
 from Pythonic_TriFSS.Utils.prg import prg
 from Pythonic_TriFSS.Utils.random_sample import sampleGroupElements
 from Pythonic_TriFSS.FSS.dataClass.correction_words import CW_DPF
-from Pythonic_TriFSS.FSS.dataClass.function_key import DPFKey
+from Pythonic_TriFSS.FSS.dataClass.function_key import DPFKey, Correlated_DPF_Key
 from Pythonic_TriFSS.Communication.semi_honest_party import SemiHonestParty
 from Pythonic_TriFSS.Communication.dealer import TrustedDealer
 
 
-def keygenDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, filename=None, DEBUG=config.DEBUG) \
+def keygenDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, filename=None,
+              local_transfer=True, DEBUG=config.DEBUG) \
         -> tuple:
     """
     This function returns the key pair for DPF @ x, payload = 1 currently.
     We sample the first seed from the ring
-    TODO: Add randomness DPF
-    TODO: Add Full Domain Evaluation
+    TODO: Add Full Domain Evaluation (in progress)
+    TODO: Enable Cache Optimization
+    :param local_transfer:
     :param filename:
     :param party:
     :param DEBUG:
@@ -77,16 +79,18 @@ def keygenDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, 
                   f'SR = {reconstructed_seed >> 1 & (2 ** sec_para - 1)}, '
                   f'BR = {reconstructed_seed & 1}')
             print(f'Current choice is {x[x.bitlen - 1 - i]}')
-    party.send(k0, name=filename)
-    party.send(k1, name=filename)
-    party.eliminate_start_maker('keygenDPF', 'offline')
+    if local_transfer:
+        party.send(k0, name=filename)
+        party.send(k1, name=filename)
+    party.eliminate_start_marker('keygenDPF', 'offline')
     return k0, k1
 
 
-def evalDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, filename=None, sec_para=config.sec_para,
-            DEBUG=config.DEBUG):
+def evalDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, filename=None, cacheDict=None,
+            sec_para=config.sec_para, DEBUG=config.DEBUG):
     """
     This function evaluates DPF at key with the public value x
+    :param cacheDict: This is the dictionary that caches the prg value.
     :param filename:
     :param DEBUG:
     :param sec_para:
@@ -123,5 +127,88 @@ def evalDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, filena
         if DEBUG:
             print(f'PRG Result = {prg_res}')
             print(f'pre level seed = {pre_level_seed}')
-    party.eliminate_start_maker('evalDPF')
+    party.eliminate_start_marker('evalDPF')
     return action_bit
+
+
+def keygenCorrelatedDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, filename=None,
+                        local_transfer=True, seed=config.seed, DEBUG=config.DEBUG) -> tuple:
+    """
+    This function returns the correlated DPF keys. The insight is that, we produce DPF at the random place from group,
+    then construct delta and sending to each other.
+    :param local_transfer:
+    :param x: This is data-independent function
+    :param seed:
+    :param party:
+    :param sec_para:
+    :param filename:
+    :param DEBUG:
+    :return:
+    """
+    party.set_start_marker('keygenCorrelatedDPF', 'offline')
+    r = sampleGroupElements(x.bitlen, x.scalefactor, seed)
+    mask = sampleGroupElements(x.bitlen, x.scalefactor, seed)
+    k0 = Correlated_DPF_Key()
+    k1 = Correlated_DPF_Key()
+    _k0, _k1 = keygenDPF(x=(x + r), party=party, sec_para=sec_para, filename=filename, local_transfer=False,
+                         DEBUG=DEBUG)
+    k0.init_from_DPFKey(_k0)
+    k1.init_from_DPFKey(_k1)
+    del _k0, _k1
+    k0.r = (r - mask)
+    k1.r = mask
+    if local_transfer:
+        party.send(k0, filename)
+        party.send(k1, filename)
+    party.eliminate_start_marker('keygenCorrelatedDPF', 'offline')
+    return k0, k1
+
+
+def evalCorrelatedDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_DPF_Key = None, filename=None,
+                      sec_para=config.sec_para, DEBUG=config.DEBUG):
+    """
+    This function evaluates DPF from a random place r and then reconstruct the to result the correct one.
+    :param party:
+    :param x:
+    :param key:
+    :param filename: This indicates the file that storing the serialized key.
+    :param sec_para:
+    :param DEBUG:
+    :return:
+    """
+    party.set_start_marker(func='evalCorrelatedDPF')
+    if filename is None:
+        assert (key is not None), "We need at least key or keyfile to continue."
+    else:
+        key = party.local_recv(filename=filename)
+    new_x = x + key.r
+    party.send(new_x)
+    recv = party.recv()
+    reconstructed_x = new_x + recv
+    if DEBUG:
+        print(f'==========DEBUG INFO FOR {party.party_id} @ evalCorrDPF==========')
+        print(f'x+r = {new_x.value}')
+        print(f'x+r+recv = {reconstructed_x.value}')
+        print('==========DEBUG @ evalCorrDPF END==========')
+    del new_x
+    result = evalDPF(party=party, x=reconstructed_x, key=key, sec_para=sec_para, DEBUG=DEBUG)
+    party.eliminate_start_marker(func='evalCorrelatedDPF')
+    return result
+
+
+def evalAll(party: SemiHonestParty, x: GroupElements, key: Correlated_DPF_Key = None, filename=None,
+            enable_cache=False, thread_num=config.full_domian_eval_thread, sed_para=config.sec_para,
+            DEBUG=config.DEBUG):
+    """
+    This function evaluates all the nodes within the input domain.
+    :param party:
+    :param x: The very value of this var is useless, we only use it to specify the group information.
+    :param key:
+    :param filename:
+    :param enable_cache:
+    :param thread_num:
+    :param sed_para:
+    :param DEBUG:
+    :return:
+    """
+    pass
