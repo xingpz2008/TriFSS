@@ -14,7 +14,7 @@ def keygenDIF(interval: (GroupElements, GroupElements), party: TrustedDealer, fi
     If there is a wrap around, we can use inverse to accomplish it.
     If x0 < 0 and x1 > 0, key for interval 0 (the negative one) should inverse
     ----@@@@-x1-----0-----x0--@@@@--- for fixed-arithmetic
-    TODO: Add Payload
+    TODO: Consider Payload
     :param interval:
     :param party:
     :param filename:

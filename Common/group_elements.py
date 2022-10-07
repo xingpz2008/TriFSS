@@ -6,7 +6,7 @@ import Pythonic_TriFSS.Configs.fixed_point_repr as config
 
 
 class GroupElements(object):
-    # TODO: Check if the implementation of Binary Operations for Group Element is proper.
+    # TODO: Consider if the implementation of Binary Operations for Group Element is proper.
     def __init__(self, value, bitlen=config.bitlen, scale=config.scalefactor, repr_value=None, DEBUG=config.DEBUG):
         assert ((bitlen >= scale) & (bitlen >= 1)), "Improper bit length or scale"
         assert (scale >= 0), "Improper scale"

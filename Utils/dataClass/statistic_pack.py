@@ -2,7 +2,7 @@ import time
 
 
 class statistic_pack(object):
-    # TODO: Repair total online time and offline time
+    # TODO: Consider repair total online time and offline time
     def __init__(self):
         self.__offline_time = 0
         self.__online_time = 0

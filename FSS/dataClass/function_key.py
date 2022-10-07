@@ -17,7 +17,7 @@ class DIFKey(object):
         self.interval_1_key = None
 
 
-class Correlated_DPF_Key(DPFKey):
+class Correlated_DPFKey(DPFKey):
     def __init__(self):
         super().__init__()
         self.r = None

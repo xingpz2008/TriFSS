@@ -50,7 +50,7 @@ def B2A(x: int, triplet, party: SemiHonestParty, bitlen=config.bitlen, scale=con
     assert (type(triplet) in [str, CrossTermTriplets, None]), f"Can not identify triplets in format {type(triplet)}"
     party.set_start_marker(func='B2A', func_type='online')
     if triplet is None:
-        # TODO: Add Internet Comm for dealer
+        # TODO: Consider Internet Comm for dealer
         raise NotImplementedError("Mult triplets can only be read locally currently.")
     if type(triplet) is str:
         triplet = party.local_recv(triplet)

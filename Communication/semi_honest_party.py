@@ -48,5 +48,8 @@ class SemiHonestParty(object):
         else:
             self.statistic_pack.eliminate_offline_maker(func)
 
+    def empty_cache_dict(self):
+        self.DPF_Dict = dict()
+
     def get_performance_statics(self):
         self.statistic_pack.print()

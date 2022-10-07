@@ -3,9 +3,10 @@ from Pythonic_TriFSS.Common.group_elements import GroupElements
 from Pythonic_TriFSS.Utils.prg import prg
 from Pythonic_TriFSS.Utils.random_sample import sampleGroupElements
 from Pythonic_TriFSS.FSS.dataClass.correction_words import CW_DPF
-from Pythonic_TriFSS.FSS.dataClass.function_key import DPFKey, Correlated_DPF_Key
+from Pythonic_TriFSS.FSS.dataClass.function_key import DPFKey, Correlated_DPFKey
 from Pythonic_TriFSS.Communication.semi_honest_party import SemiHonestParty
 from Pythonic_TriFSS.Communication.dealer import TrustedDealer
+from Pythonic_TriFSS.Common.tensor import TriFSSTensor
 
 
 def keygenDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, filename=None,
@@ -15,7 +16,6 @@ def keygenDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, 
     This function returns the key pair for DPF @ x, payload = 1 currently.
     We sample the first seed from the ring
     TODO: Add Full Domain Evaluation (in progress)
-    TODO: Enable Cache Optimization
     :param local_transfer:
     :param filename:
     :param party:
@@ -86,11 +86,13 @@ def keygenDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, 
     return k0, k1
 
 
-def evalDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, filename=None, cacheDict=None,
-            sec_para=config.sec_para, DEBUG=config.DEBUG):
+def evalDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, filename=None, enable_cache=False,
+            thread=1, sec_para=config.sec_para, DEBUG=config.DEBUG):
     """
     This function evaluates DPF at key with the public value x
-    :param cacheDict: This is the dictionary that caches the prg value.
+    # TODO Consider Enable thread
+    :param thread:
+    :param enable_cache: check if we enable cache optimization
     :param filename:
     :param DEBUG:
     :param sec_para:
@@ -112,7 +114,16 @@ def evalDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, filena
             print(f'level seed = {level_seed}')
             print(f'Action bit = {action_bit}')
         # We first expand the seed by PRG
-        prg_res = prg(level_seed, sec_para, 'DPF', party=party)
+        if enable_cache:
+            try:
+                prg_res = party.DPF_Dict[level_seed]
+            except KeyError as e:
+                if DEBUG:
+                    print(f'[INFO] Add {level_seed} into dict')
+                prg_res = prg(level_seed, sec_para, 'DPF', party=party)
+                party.DPF_Dict[level_seed] = prg_res
+        else:
+            prg_res = prg(level_seed, sec_para, 'DPF', party=party)
         # Then add it with CW
         if action_bit == 1:
             pre_level_seed = prg_res ^ key.CW_List[i].__get_decompressed_CW__()
@@ -148,8 +159,8 @@ def keygenCorrelatedDPF(x: GroupElements, party: TrustedDealer, sec_para=config.
     party.set_start_marker('keygenCorrelatedDPF', 'offline')
     r = sampleGroupElements(x.bitlen, x.scalefactor, seed)
     mask = sampleGroupElements(x.bitlen, x.scalefactor, seed)
-    k0 = Correlated_DPF_Key()
-    k1 = Correlated_DPF_Key()
+    k0 = Correlated_DPFKey()
+    k1 = Correlated_DPFKey()
     _k0, _k1 = keygenDPF(x=(x + r), party=party, sec_para=sec_para, filename=filename, local_transfer=False,
                          DEBUG=DEBUG)
     k0.init_from_DPFKey(_k0)
@@ -164,7 +175,7 @@ def keygenCorrelatedDPF(x: GroupElements, party: TrustedDealer, sec_para=config.
     return k0, k1
 
 
-def evalCorrelatedDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_DPF_Key = None, filename=None,
+def evalCorrelatedDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_DPFKey = None, filename=None,
                       sec_para=config.sec_para, DEBUG=config.DEBUG):
     """
     This function evaluates DPF from a random place r and then reconstruct the to result the correct one.
@@ -196,19 +207,39 @@ def evalCorrelatedDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_
     return result
 
 
-def evalAll(party: SemiHonestParty, x: GroupElements, key: Correlated_DPF_Key = None, filename=None,
-            enable_cache=False, thread_num=config.full_domian_eval_thread, sed_para=config.sec_para,
-            DEBUG=config.DEBUG):
+def evalAllDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, filename=None,
+               enable_cache=False, thread=config.full_domian_eval_thread, sed_para=config.sec_para,
+               DEBUG=config.DEBUG):
     """
     This function evaluates all the nodes within the input domain.
+    returns the bool value tensor
+    # TODO: Add correlated DPF for evalAll
     :param party:
     :param x: The very value of this var is useless, we only use it to specify the group information.
     :param key:
     :param filename:
     :param enable_cache:
-    :param thread_num:
+    :param thread:
     :param sed_para:
     :param DEBUG:
     :return:
     """
-    pass
+    party.set_start_marker(func='evalAllDPF')
+    if filename is None:
+        assert (key is not None), "We need at least key or keyfile to continue."
+    else:
+        key = party.local_recv(filename=filename)
+    ring = 2 ** x.bitlen
+    result_tensor = TriFSSTensor()
+    for i in range(ring):
+        if DEBUG:
+            if i % 4096 == 0:
+                print(f'[INFO] EvalAll {i/ring*100}% completed')
+        this_x = GroupElements(value=None, repr_value=i)
+        dpf_value = evalDPF(party=party, x=this_x, key=key, enable_cache=enable_cache,
+                            thread=thread, sec_para=sed_para, DEBUG=False)
+        result_tensor.add_elements(dpf_value)
+        # We do not apply B2A here.
+    party.empty_cache_dict()
+    party.eliminate_start_marker(func='evalAllDPF')
+    return result_tensor
