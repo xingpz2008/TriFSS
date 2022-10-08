@@ -15,6 +15,7 @@ def keygenDIF(interval: (GroupElements, GroupElements), party: TrustedDealer, fi
     If x0 < 0 and x1 > 0, key for interval 0 (the negative one) should inverse
     ----@@@@-x1-----0-----x0--@@@@--- for fixed-arithmetic
     TODO: Consider Payload
+    TODO: Add correlated DIF
     :param local_transfer:
     :param interval:
     :param party:

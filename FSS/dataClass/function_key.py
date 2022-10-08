@@ -25,3 +25,14 @@ class Correlated_DPFKey(DPFKey):
     def init_from_DPFKey(self, Key: DPFKey):
         self.seed = Key.seed
         self.CW_List = Key.CW_List
+
+
+class Correlated_DCFKey(DCFKey):
+    def __init__(self):
+        super().__init__()
+        self.r = None
+
+    def init_from_DCFKey(self, Key: DCFKey):
+        self.seed = Key.seed
+        self.CW_List = Key.CW_List
+        self.inverse = Key.inverse

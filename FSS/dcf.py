@@ -2,23 +2,24 @@ import Pythonic_TriFSS.Configs.fss as config
 from Pythonic_TriFSS.Common.group_elements import GroupElements
 from Pythonic_TriFSS.Utils.prg import prg
 from Pythonic_TriFSS.FSS.dataClass.correction_words import CW_DCF
-from Pythonic_TriFSS.FSS.dataClass.function_key import DCFKey
+from Pythonic_TriFSS.FSS.dataClass.function_key import DCFKey, Correlated_DCFKey
 from Pythonic_TriFSS.Utils.random_sample import sampleGroupElements
 from Pythonic_TriFSS.Communication.dealer import TrustedDealer
 from Pythonic_TriFSS.Communication.semi_honest_party import SemiHonestParty
 
 
-def keygenDCF(x: GroupElements, party: TrustedDealer, inverse=False, filename=None, sec_para=config.sec_para,
+def keygenDCF(x: GroupElements, party: TrustedDealer, inverse=None, filename=None, sec_para=config.sec_para,
               local_transfer=True, DEBUG=config.DEBUG) -> [DCFKey, DCFKey]:
     """
-    TODO: Correlated Randomness?
+    TODO: Correlated Randomness? (in progress)
     TODO: Consider Payload
     This functions returns DCF Key for if input < x, payload = 1 currently
+    Attention, this is unsigned comparison, that compares without considering sign bit!
     :param local_transfer:
     :param filename:
     :param party:
     :param x:
-    :param inverse:
+    :param inverse: Keep False for unsigned comparison, keep None for signed comparison.
     :param sec_para:
     :param DEBUG:
     :return:
@@ -29,6 +30,9 @@ def keygenDCF(x: GroupElements, party: TrustedDealer, inverse=False, filename=No
     alpha_1 = sampleGroupElements(x.bitlen, x.scalefactor, config.seed)
     k0 = DCFKey()
     k1 = DCFKey()
+    if inverse is None:
+        # This means we use the default settings and we use automatic judgement to determine if we need the inverse
+        inverse = x < 0
     k0.seed = alpha_0
     k0.inverse = inverse
     k1.seed = alpha_1
@@ -147,10 +151,12 @@ def evalDCF(party: SemiHonestParty, x: GroupElements, key: DCFKey = None, filena
     return action_bit ^ identifier_result ^ (inverse * party.party_id)
 
 
-def keygenCorrelatedDCF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, filename=None,
+def keygenCorrelatedDCF(x: GroupElements, party: TrustedDealer, inverse=False,
+                        sec_para=config.sec_para, filename=None,
                         local_transfer=True, seed=config.seed, DEBUG=config.DEBUG):
     """
     This function generates comparison at k+r, i.e. x<k -> (x+r)<(k+r)
+    :param inverse:
     :param x:
     :param party:
     :param sec_para:
@@ -160,5 +166,57 @@ def keygenCorrelatedDCF(x: GroupElements, party: TrustedDealer, sec_para=config.
     :param DEBUG:
     :return:
     """
-    party.set_start_marker('keygenCorrelatedDPF', 'offline')
-    pass
+    party.set_start_marker('keygenCorrelatedDCF', 'offline')
+    mask_0 = sampleGroupElements(x.bitlen, x.scalefactor, seed)
+    mask_1 = sampleGroupElements(x.bitlen, x.scalefactor, seed)
+    reconstructed_x = x + mask_0 + mask_1
+    _k0, _k1 = keygenDCF(x=reconstructed_x, party=party, sec_para=sec_para, inverse=inverse,
+                         filename=filename, local_transfer=False, DEBUG=DEBUG)
+    k0 = Correlated_DCFKey()
+    k1 = Correlated_DCFKey()
+    k0.init_from_DCFKey(_k0)
+    k1.init_from_DCFKey(_k1)
+    k0.r = mask_0
+    k1.r = mask_1
+    if local_transfer:
+        if filename is None:
+            filename_0 = f'rDCF_{x.bitlen}_{x.scalefactor}_0.key'
+            filename_1 = f'rDCF_{x.bitlen}_{x.scalefactor}_1.key'
+            filename = [filename_0, filename_1]
+        party.send(k0, filename[0])
+        party.send(k1, filename[1])
+    party.eliminate_start_marker('keygenCorrelatedDCF', 'offline')
+    return k0, k1
+
+
+def evalCorrelatedDCF(party: SemiHonestParty, x: GroupElements, key: Correlated_DCFKey = None,
+                      filename=None, sec_para=config.sec_para, DEBUG=config.DEBUG):
+    """
+    This function returns the DCF result at place k+r, i.e. x<k -> x+r<k+r
+    :param party:
+    :param x:
+    :param key:
+    :param inverse:
+    :param filename:
+    :param sec_para:
+    :param DEBUG:
+    :return:
+    """
+    party.set_start_marker(func='evalCorrelatedDCF')
+    if filename is None:
+        assert (key is not None), "We need at least key or keyfile to continue."
+    else:
+        key = party.local_recv(filename=filename)
+    new_x = x + key.r
+    party.send(new_x)
+    recv = party.recv()
+    reconstructed_x = new_x + recv
+    if DEBUG:
+        print(f'==========DEBUG INFO FOR {party.party_id} @ evalCorrDCF==========')
+        print(f'x+r = {new_x.value}')
+        print(f'x+r+recv = {reconstructed_x.value}')
+        print('==========DEBUG @ evalCorrDPF END==========')
+    del new_x
+    result = evalDCF(party=party, x=reconstructed_x, key=key, sec_para=sec_para, DEBUG=DEBUG)
+    party.eliminate_start_marker(func='evalCorrelatedDCF')
+    return result

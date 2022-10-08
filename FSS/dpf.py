@@ -174,8 +174,8 @@ def keygenCorrelatedDPF(x: GroupElements, party: TrustedDealer, sec_para=config.
     k1.r = mask
     if local_transfer:
         if filename is None:
-            filename_0 = f'DPF_{x.bitlen}_{x.scalefactor}_0.key'
-            filename_1 = f'DPF_{x.bitlen}_{x.scalefactor}_1.key'
+            filename_0 = f'rDPF_{x.bitlen}_{x.scalefactor}_0.key'
+            filename_1 = f'rDPF_{x.bitlen}_{x.scalefactor}_1.key'
             filename = [filename_0, filename_1]
         party.send(k0, filename[0])
         party.send(k1, filename[1])
@@ -216,7 +216,7 @@ def evalCorrelatedDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_
 
 
 def evalAllDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_DPFKey = None, filename=None,
-               enable_cache=False, thread=config.full_domian_eval_thread, sed_para=config.sec_para,
+               enable_cache=False, thread=config.full_domain_eval_thread, sed_para=config.sec_para,
                DEBUG=config.DEBUG):
     """
     This function evaluates all the nodes within the input domain.
