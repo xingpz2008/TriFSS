@@ -8,8 +8,12 @@ import Pythonic_TriFSS.Configs.fixed_point_repr as config
 class GroupElements(object):
     # TODO: Consider if the implementation of Binary Operations for Group Element is proper.
     def __init__(self, value, bitlen=config.bitlen, scale=config.scalefactor, repr_value=None, DEBUG=config.DEBUG):
-        assert ((bitlen >= scale) & (bitlen >= 1)), "Improper bit length or scale"
+        assert (bitlen >= 1), "Improper bit length or scale"
         assert (scale >= 0), "Improper scale"
+        if scale > bitlen:
+            print('[WARNING] You are using GroupElements whose scale is bigger than bit-length. '
+                  'It is allowed as an experimental feature, but may cause unexpected result.'
+                  '\n[Hint] Checking if both signed and unsigned data are implemented correctly.')
         self.bitlen = bitlen
         self.scalefactor = scale
         if repr_value is None:

@@ -5,7 +5,7 @@ from Pythonic_TriFSS.Common.group_elements import GroupElements
 # TODO: Add Elementwise Addition
 
 class TriFSSTensor(object):
-    def __init__(self, val_list=None):
+    def __init__(self, val_list=[]):
         # self.real_tensor = np.array([1, length])
         self.val_list = val_list
         if not val_list:
@@ -34,6 +34,11 @@ class TriFSSTensor(object):
         self.__length += 1
 
     def __add__(self, other):
+        """
+        This build-in class method is the concat one, do not confused with elementwise addition!
+        :param other: 
+        :return:
+        """
         assert (type(other) == TriFSSTensor), '+ operation can only be applied to TriFSSTensor'
         return TriFSSTensor(self.val_list+other.val_list)
 

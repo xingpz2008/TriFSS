@@ -32,6 +32,9 @@ def keygenDCF(x: GroupElements, party: TrustedDealer, inverse=None, filename=Non
     if inverse is None:
         # This means we use the default settings and we use automatic judgement to determine if we need the inverse
         inverse = x < 0
+    else:
+        print('[WARNING] We STRONGLY recommend you to set var \'inverse\' as None to enable automatic inverse '
+              'judgement, unless you know what it means!')
     k0.seed = alpha_0
     k0.inverse = inverse
     k1.seed = alpha_1
@@ -155,7 +158,7 @@ def keygenCorrelatedDCF(x: GroupElements, party: TrustedDealer, inverse=None,
                         local_transfer=True, seed=config.seed, DEBUG=config.DEBUG):
     """
     This function generates comparison at k+r, i.e. x<k -> (x+r)<(k+r)
-    :param inverse:
+    :param inverse: None for automatic judgement (recommended)
     :param x:
     :param party:
     :param sec_para:
