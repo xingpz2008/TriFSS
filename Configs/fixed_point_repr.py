@@ -1,4 +1,4 @@
-bitlen = 32
-scalefactor = 20
+bitlen = 8
+scalefactor = 3
 DEBUG = True
 seed = None

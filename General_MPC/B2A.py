@@ -7,7 +7,7 @@ from Pythonic_TriFSS.Communication.dealer import TrustedDealer
 
 
 def generate_cross_term_triplet(bitlen=config.bitlen, scale=config.scalefactor,
-                                executor: TrustedDealer = None, filename: str = None) \
+                                executor: TrustedDealer = None, filename: [str, str] = None) \
         -> [CrossTermTriplets, CrossTermTriplets]:
     """
     This function generates xy mult triplets for P0 have x, P1 have y (Not additive shares)
@@ -25,8 +25,12 @@ def generate_cross_term_triplet(bitlen=config.bitlen, scale=config.scalefactor,
     z = a * b
     z = z - r
     if executor is not None:
-        executor.send(data=CrossTermTriplets(a, z), name=filename)
-        executor.send(data=CrossTermTriplets(b, r), name=filename)
+        if filename is None:
+            filename_0 = f'B2A_{bitlen}_{scale}_0.triplet'
+            filename_1 = f'B2A_{bitlen}_{scale}_1.triplet'
+            filename = [filename_0, filename_1]
+        executor.send(data=CrossTermTriplets(a, z), name=filename[0])
+        executor.send(data=CrossTermTriplets(b, r), name=filename[1])
         executor.eliminate_start_marker('B2A', 'offline')
     else:
         return CrossTermTriplets(a, z), CrossTermTriplets(b, r)

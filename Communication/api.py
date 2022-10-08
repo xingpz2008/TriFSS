@@ -50,6 +50,8 @@ def listen(addr, port, LOG=config.LOG) -> socket:
 def local_send(data, filename: str = None, LOG=config.LOG):
     if filename is None:
         filename = config.default_filepath + str((time.time())) + str(random.random())
+    if ('\\' not in filename) and ('/' not in filename):
+        filename = config.default_filepath + filename
     with open(filename, "wb+") as f:
         pickle.dump(data, f)
         if LOG:

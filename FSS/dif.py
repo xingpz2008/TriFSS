@@ -7,7 +7,7 @@ from Pythonic_TriFSS.Communication.semi_honest_party import SemiHonestParty
 
 
 def keygenDIF(interval: (GroupElements, GroupElements), party: TrustedDealer, filename=None, sec_para=config.sec_para,
-              DEBUG=config.DEBUG) -> [DIFKey, DIFKey]:
+              local_transfer = True, DEBUG=config.DEBUG) -> [DIFKey, DIFKey]:
     """
     This function generates DIF for if input in (interval), return 1, else 0.
     The insight is that, if there is no wrap around, we can use evalDCF1 ^ evalDCF2
@@ -15,6 +15,7 @@ def keygenDIF(interval: (GroupElements, GroupElements), party: TrustedDealer, fi
     If x0 < 0 and x1 > 0, key for interval 0 (the negative one) should inverse
     ----@@@@-x1-----0-----x0--@@@@--- for fixed-arithmetic
     TODO: Consider Payload
+    :param local_transfer:
     :param interval:
     :param party:
     :param filename:
@@ -32,8 +33,13 @@ def keygenDIF(interval: (GroupElements, GroupElements), party: TrustedDealer, fi
                                                      local_transfer=False, DEBUG=DEBUG)
     k0.interval_1_key, k1.interval_1_key = keygenDCF(x=interval[1], party=party, local_transfer=False,
                                                      sec_para=sec_para, DEBUG=DEBUG)
-    party.send(k0, filename)
-    party.send(k1, filename)
+    if local_transfer:
+        if filename is None:
+            filename_0 = f'DIF_{x.bitlen}_{x.scalefactor}_0.key'
+            filename_1 = f'DIF_{x.bitlen}_{x.scalefactor}_1.key'
+            filename = [filename_0, filename_1]
+        party.send(k0, filename[0])
+        party.send(k1, filename[1])
     party.eliminate_start_marker('keygenDIF', 'offline')
     return k0, k1
 

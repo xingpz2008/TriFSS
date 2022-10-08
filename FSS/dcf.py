@@ -12,7 +12,7 @@ def keygenDCF(x: GroupElements, party: TrustedDealer, inverse=False, filename=No
               local_transfer=True, DEBUG=config.DEBUG) -> [DCFKey, DCFKey]:
     """
     TODO: Correlated Randomness?
-    TODO: Payload
+    TODO: Consider Payload
     This functions returns DCF Key for if input < x, payload = 1 currently
     :param local_transfer:
     :param filename:
@@ -88,8 +88,12 @@ def keygenDCF(x: GroupElements, party: TrustedDealer, inverse=False, filename=No
                   f'CR = {reconstructed_seed & 1}, ')
             print(f'Current choice is {x[x.bitlen - 1 - i]}')
     if local_transfer:
-        party.send(k0, name=filename)
-        party.send(k1, name=filename)
+        if filename is None:
+            filename_0 = f'DCF_{x.bitlen}_{x.scalefactor}_0.key'
+            filename_1 = f'DCF_{x.bitlen}_{x.scalefactor}_1.key'
+            filename = [filename_0, filename_1]
+        party.send(k0, name=filename[0])
+        party.send(k1, name=filename[1])
     party.eliminate_start_marker('keygenDCF', 'offline')
     return k0, k1
 
@@ -141,3 +145,20 @@ def evalDCF(party: SemiHonestParty, x: GroupElements, key: DCFKey = None, filena
         identifier_result = identifier_result ^ identifier
     party.eliminate_start_marker('evalDCF')
     return action_bit ^ identifier_result ^ (inverse * party.party_id)
+
+
+def keygenCorrelatedDCF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, filename=None,
+                        local_transfer=True, seed=config.seed, DEBUG=config.DEBUG):
+    """
+    This function generates comparison at k+r, i.e. x<k -> (x+r)<(k+r)
+    :param x:
+    :param party:
+    :param sec_para:
+    :param filename:
+    :param local_transfer:
+    :param seed:
+    :param DEBUG:
+    :return:
+    """
+    party.set_start_marker('keygenCorrelatedDPF', 'offline')
+    pass

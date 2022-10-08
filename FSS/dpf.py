@@ -80,8 +80,12 @@ def keygenDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, 
                   f'BR = {reconstructed_seed & 1}')
             print(f'Current choice is {x[x.bitlen - 1 - i]}')
     if local_transfer:
-        party.send(k0, name=filename)
-        party.send(k1, name=filename)
+        if filename is None:
+            filename_0 = f'DPF_{x.bitlen}_{x.scalefactor}_0.key'
+            filename_1 = f'DPF_{x.bitlen}_{x.scalefactor}_1.key'
+            filename = [filename_0, filename_1]
+        party.send(k0, name=filename[0])
+        party.send(k1, name=filename[1])
     party.eliminate_start_marker('keygenDPF', 'offline')
     return k0, k1
 
@@ -169,8 +173,12 @@ def keygenCorrelatedDPF(x: GroupElements, party: TrustedDealer, sec_para=config.
     k0.r = (r - mask)
     k1.r = mask
     if local_transfer:
-        party.send(k0, filename)
-        party.send(k1, filename)
+        if filename is None:
+            filename_0 = f'DPF_{x.bitlen}_{x.scalefactor}_0.key'
+            filename_1 = f'DPF_{x.bitlen}_{x.scalefactor}_1.key'
+            filename = [filename_0, filename_1]
+        party.send(k0, filename[0])
+        party.send(k1, filename[1])
     party.eliminate_start_marker('keygenCorrelatedDPF', 'offline')
     return k0, k1
 
@@ -207,13 +215,13 @@ def evalCorrelatedDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_
     return result
 
 
-def evalAllDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, filename=None,
+def evalAllDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_DPFKey = None, filename=None,
                enable_cache=False, thread=config.full_domian_eval_thread, sed_para=config.sec_para,
                DEBUG=config.DEBUG):
     """
     This function evaluates all the nodes within the input domain.
     returns the bool value tensor
-    # TODO: Add correlated DPF for evalAll
+    # TODO: Add correlated DPF for evalAll, when invoking the function, not inside the function
     :param party:
     :param x: The very value of this var is useless, we only use it to specify the group information.
     :param key:
@@ -233,8 +241,8 @@ def evalAllDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, fil
     result_tensor = TriFSSTensor()
     for i in range(ring):
         if DEBUG:
-            if i % 4096 == 0:
-                print(f'[INFO] EvalAll {i/ring*100}% completed')
+            if i % (int(0.1*ring)) == 0:
+                print(f'[INFO] EvalAll {i / ring * 100}% completed')
         this_x = GroupElements(value=None, repr_value=i)
         dpf_value = evalDPF(party=party, x=this_x, key=key, enable_cache=enable_cache,
                             thread=thread, sec_para=sed_para, DEBUG=False)
