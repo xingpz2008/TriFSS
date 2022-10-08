@@ -15,7 +15,6 @@ def keygenDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, 
     """
     This function returns the key pair for DPF @ x, payload = 1 currently.
     We sample the first seed from the ring
-    TODO: Add Full Domain Evaluation (in progress)
     :param local_transfer:
     :param filename:
     :param party:

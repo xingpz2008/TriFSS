@@ -36,3 +36,13 @@ class Correlated_DCFKey(DCFKey):
         self.seed = Key.seed
         self.CW_List = Key.CW_List
         self.inverse = Key.inverse
+
+
+class Correlated_DIFKey(DIFKey):
+    """
+    Correlated DIF Key is almost the same as DIFKey
+    However, its self.interval_0/1_key is Correlated DCF
+    """
+    def __init__(self):
+        super().__init__()
+

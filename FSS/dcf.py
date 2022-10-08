@@ -11,7 +11,6 @@ from Pythonic_TriFSS.Communication.semi_honest_party import SemiHonestParty
 def keygenDCF(x: GroupElements, party: TrustedDealer, inverse=None, filename=None, sec_para=config.sec_para,
               local_transfer=True, DEBUG=config.DEBUG) -> [DCFKey, DCFKey]:
     """
-    TODO: Correlated Randomness? (in progress)
     TODO: Consider Payload
     This functions returns DCF Key for if input < x, payload = 1 currently
     Attention, this is unsigned comparison, that compares without considering sign bit!
