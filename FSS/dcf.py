@@ -150,7 +150,7 @@ def evalDCF(party: SemiHonestParty, x: GroupElements, key: DCFKey = None, filena
     return action_bit ^ identifier_result ^ (inverse * party.party_id)
 
 
-def keygenCorrelatedDCF(x: GroupElements, party: TrustedDealer, inverse=False,
+def keygenCorrelatedDCF(x: GroupElements, party: TrustedDealer, inverse=None,
                         sec_para=config.sec_para, filename=None,
                         local_transfer=True, seed=config.seed, DEBUG=config.DEBUG):
     """
@@ -195,7 +195,6 @@ def evalCorrelatedDCF(party: SemiHonestParty, x: GroupElements, key: Correlated_
     :param party:
     :param x:
     :param key:
-    :param inverse:
     :param filename:
     :param sec_para:
     :param DEBUG:

@@ -6,11 +6,14 @@ from Pythonic_TriFSS.Communication.semi_honest_party import SemiHonestParty
 from Pythonic_TriFSS.Communication.dealer import TrustedDealer
 
 
-def generate_cross_term_triplet(bitlen=config.bitlen, scale=config.scalefactor,
-                                executor: TrustedDealer = None, filename: [str, str] = None) \
+def generate_cross_term_triplet(bitlen=config.bitlen, scale=config.scalefactor, local_transfer=True,
+                                executor: TrustedDealer = None, filename: [str, str] = None, seed=config.seed) \
         -> [CrossTermTriplets, CrossTermTriplets]:
     """
     This function generates xy mult triplets for P0 have x, P1 have y (Not additive shares)
+    # TODO: How to process multiplication loss?
+    :param seed:
+    :param local_transfer:
     :param filename:
     :param executor:
     :param bitlen:
@@ -19,21 +22,26 @@ def generate_cross_term_triplet(bitlen=config.bitlen, scale=config.scalefactor,
     """
     if executor is not None:
         executor.set_start_marker('B2A', 'offline')
-    a = sampleGroupElements(bitlen, scale, config.seed)
-    b = sampleGroupElements(bitlen, scale, config.seed)
-    r = sampleGroupElements(bitlen, scale, config.seed)
+    a = sampleGroupElements(bitlen, scale, seed)
+    b = sampleGroupElements(bitlen, scale, seed)
+    r = sampleGroupElements(bitlen, scale, seed)
+    # a = GroupElements(3)
+    # b = GroupElements(2)
+    # r = GroupElements(1)
     z = a * b
     z = z - r
     if executor is not None:
-        if filename is None:
-            filename_0 = f'B2A_{bitlen}_{scale}_0.triplet'
-            filename_1 = f'B2A_{bitlen}_{scale}_1.triplet'
-            filename = [filename_0, filename_1]
-        executor.send(data=CrossTermTriplets(a, z), name=filename[0])
-        executor.send(data=CrossTermTriplets(b, r), name=filename[1])
-        executor.eliminate_start_marker('B2A', 'offline')
-    else:
-        return CrossTermTriplets(a, z), CrossTermTriplets(b, r)
+        if local_transfer:
+            if filename is None:
+                filename_0 = f'B2A_{bitlen}_{scale}_0.triplet'
+                filename_1 = f'B2A_{bitlen}_{scale}_1.triplet'
+                filename = [filename_0, filename_1]
+            executor.send(data=CrossTermTriplets(a, z), name=filename[0])
+            executor.send(data=CrossTermTriplets(b, r), name=filename[1])
+            executor.eliminate_start_marker('B2A', 'offline')
+            return filename
+    executor.eliminate_start_marker('B2A', 'offline')
+    return CrossTermTriplets(a, z), CrossTermTriplets(b, r)
 
 
 def B2A(x: int, triplet, party: SemiHonestParty, bitlen=config.bitlen, scale=config.scalefactor, DEBUG=False) \

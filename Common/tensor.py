@@ -2,12 +2,16 @@ from Pythonic_TriFSS.Common.group_elements import GroupElements
 
 
 # TODO: Consider Optimize Tensor Operation
+# TODO: Add Elementwise Addition
 
 class TriFSSTensor(object):
-    def __init__(self):
+    def __init__(self, val_list=None):
         # self.real_tensor = np.array([1, length])
-        self.val_list = []
-        self.__length = 0
+        self.val_list = val_list
+        if not val_list:
+            self.__length = 0
+        else:
+            self.__length = len(val_list)
 
     def __mul__(self, other):
         assert (type(other) in [TriFSSTensor, int, float, GroupElements]), 'Unsupported type for tensor multiplication.'
@@ -28,6 +32,10 @@ class TriFSSTensor(object):
             assert (isinstance(x, type(self.val_list[0]))), "Invalid data type"
         self.val_list.append(x)
         self.__length += 1
+
+    def __add__(self, other):
+        assert (type(other) == TriFSSTensor), '+ operation can only be applied to TriFSSTensor'
+        return TriFSSTensor(self.val_list+other.val_list)
 
     def __get_len__(self):
         return self.__length
