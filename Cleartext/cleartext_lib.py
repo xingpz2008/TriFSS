@@ -44,3 +44,23 @@ def clear_containment(x: GroupElements, knots_list) -> TriFSSTensor:
         else:
             result_vector.add_elements(0)
     return result_vector
+
+
+def clear_dpf_all(x: GroupElements, domain: float) -> TriFSSTensor:
+    """
+    This function returns all value at place x
+    :param domain:
+    :param x:
+    :return:
+    """
+    entries = 2 ** x.bitlen
+    resolution = 1 / (2**x.scalefactor)
+    vector = TriFSSTensor()
+    for i in range(entries):
+        this_val = i * resolution
+        group_this = GroupElements(value=this_val, DEBUG=True)
+        if group_this.value == x.value:
+            vector.add_elements(1)
+        else:
+            vector.add_elements(0)
+    return vector

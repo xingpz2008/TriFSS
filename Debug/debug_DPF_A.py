@@ -13,7 +13,7 @@ k = GroupElements(10.5)
 x = GroupElements(1.5)
 
 party = SemiHonestParty(party_id=0, partner_addr='127.0.0.1', partner_recv_port=43000, recv_port=44000)
-res = evalAllDPF(party=party, x=x, filename='DPF_8_3_0.key', DEBUG=True)
+res = evalAllDPF(party=party, x=x, filename='DPF_23_15_0.key', DEBUG=True)
 res_ = party.recv()
 party.statistic_pack.print()
 

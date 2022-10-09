@@ -3,7 +3,6 @@ import time
 
 class statistic_pack(object):
     # TODO: Consider repair total online time and offline time
-    # TODO: Add rounds? what does round exactly mean?
     def __init__(self):
         self.__offline_time = 0
         self.__online_time = 0
