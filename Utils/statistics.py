@@ -2,7 +2,7 @@ import sys
 from Pythonic_TriFSS.Common.group_elements import GroupElements
 
 
-# TODO: Add theory statistical
+# TODO: Consider Add theory statistical
 
 def get_data_size(x):
     """

@@ -51,5 +51,17 @@ class SemiHonestParty(object):
     def empty_cache_dict(self):
         self.DPF_Dict = dict()
 
+    def add_thread(self, new_thread: TriFSSThread):
+        self.threadFactory.append(new_thread=new_thread)
+
+    def start_all_thread(self):
+        self.threadFactory.execute()
+
+    def get_existing_thread_num(self):
+        return self.threadFactory.get_existing_thread_num()
+
+    def refresh_thread_pool_item(self, index, func, args):
+        self.threadFactory.refresh_thread(index, func, args)
+
     def get_performance_statics(self):
         self.statistic_pack.print()

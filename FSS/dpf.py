@@ -7,6 +7,8 @@ from Pythonic_TriFSS.FSS.dataClass.function_key import DPFKey, Correlated_DPFKey
 from Pythonic_TriFSS.Communication.semi_honest_party import SemiHonestParty
 from Pythonic_TriFSS.Communication.dealer import TrustedDealer
 from Pythonic_TriFSS.Common.tensor import TriFSSTensor
+from Pythonic_TriFSS.Utils.thread_tool import get_loc_list
+from Pythonic_TriFSS.Communication.dataClass.thread import TriFSSThread
 
 
 def keygenDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, filename=None,
@@ -90,7 +92,7 @@ def keygenDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, 
 
 
 def evalDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, filename=None, enable_cache=False,
-            thread=1, sec_para=config.sec_para, DEBUG=config.DEBUG):
+            thread=1, sec_para=config.sec_para, mark=True, DEBUG=config.DEBUG):
     """
     This function evaluates DPF at key with the public value x
     # TODO Consider Enable thread
@@ -104,7 +106,8 @@ def evalDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, filena
     :param x:
     :return:
     """
-    party.set_start_marker(func='evalDPF')
+    if mark:
+        party.set_start_marker(func='evalDPF')
     if filename is None:
         assert (key is not None), "We need at least key or keyfile to continue."
     else:
@@ -141,7 +144,8 @@ def evalDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, filena
         if DEBUG:
             print(f'PRG Result = {prg_res}')
             print(f'pre level seed = {pre_level_seed}')
-    party.eliminate_start_marker('evalDPF')
+    if mark:
+        party.eliminate_start_marker('evalDPF')
     return action_bit
 
 
@@ -215,7 +219,7 @@ def evalCorrelatedDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_
 
 
 def evalAllDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_DPFKey = None, filename=None,
-               enable_cache=False, thread=config.full_domain_eval_thread, sed_para=config.sec_para,
+               enable_cache=False, thread=config.full_domain_eval_thread, sec_para=config.sec_para,
                DEBUG=config.DEBUG):
     """
     This function evaluates all the nodes within the input domain.
@@ -227,26 +231,53 @@ def evalAllDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_DPFKey 
     :param filename:
     :param enable_cache:
     :param thread:
-    :param sed_para:
+    :param sec_para:
     :param DEBUG:
     :return:
     """
+    assert (thread > 0), 'Invalid thread number'
     party.set_start_marker(func='evalAllDPF')
     if filename is None:
         assert (key is not None), "We need at least key or keyfile to continue."
     else:
         key = party.local_recv(filename=filename)
     ring = 2 ** x.bitlen
-    result_tensor = TriFSSTensor()
-    for i in range(ring):
-        if DEBUG:
-            if i % (int(0.1*ring)) == 0:
-                print(f'[INFO] EvalAll {i / ring * 100}% completed')
-        this_x = GroupElements(value=None, repr_value=i)
-        dpf_value = evalDPF(party=party, x=this_x, key=key, enable_cache=enable_cache,
-                            thread=thread, sec_para=sed_para, DEBUG=False)
-        result_tensor.add_elements(dpf_value)
-        # We do not apply B2A here.
+    result_tensor = TriFSSTensor([None] * ring)
+    segmentation = get_loc_list(ring, threadNum=thread)
+    if 0 not in segmentation:
+        segmentation = [0] + segmentation
+    iterator = segmentation[1]
+    for i in range(iterator - 1):
+        for j in range(thread):
+            if segmentation[j] == ring:
+                continue
+            segmentation[j] += i
+            this_x = GroupElements(segmentation[j])
+            if DEBUG:
+                print(f'[INFO] DPF eval on {segmentation[j]}')
+            if party.get_existing_thread_num() < thread:
+                new_thread = TriFSSThread(func=evalDPF, args=[party, this_x, key, None,
+                                                              enable_cache, 0, sec_para, False, False])
+                party.add_thread(new_thread)
+            else:
+                party.refresh_thread_pool_item(index=j, func=None, args=[[party, this_x, key, None,
+                                                                          enable_cache, 0, sec_para, False, False]])
+        party.start_all_thread()
+        for j in range(thread):
+            if segmentation[j] == ring:
+                continue
+            if DEBUG:
+                print(f'[INFO] DPF res write to index {segmentation[j]}')
+            result_tensor[segmentation[j]] = party.threadFactory.thread_list[j].get_thread_result()
+    # for i in range(ring):
+    #     if DEBUG:
+    #         if i % (int(0.1 * ring)) == 0:
+    #             print(f'[INFO] EvalAll {i / ring * 100}% completed')
+    #     this_x = GroupElements(value=None, repr_value=i)
+    #     dpf_value = evalDPF(party=party, x=this_x, key=key, enable_cache=enable_cache,
+    #                         thread=thread, sec_para=sec_para, DEBUG=False)
+    #     result_tensor.add_elements(dpf_value)
+    # We do not apply B2A here.
     party.empty_cache_dict()
     party.eliminate_start_marker(func='evalAllDPF')
     return result_tensor

@@ -1,4 +1,5 @@
 from threading import Thread
+import Pythonic_TriFSS.Utils.thread_tool as utils
 
 
 class TriFSSThread(Thread):
@@ -14,6 +15,12 @@ class TriFSSThread(Thread):
 
     def get_thread_result(self):
         return self.__return_value
+
+    def refresh(self, func=None, args=None):
+        if func:
+            self.func = func
+        if args:
+            self.args = args
 
 
 class TriFSSThreadFactory(object):
@@ -33,3 +40,10 @@ class TriFSSThreadFactory(object):
         for t in self.thread_list:
             if t.func_name == func_name:
                 return t.get_thread_result()
+
+    def get_existing_thread_num(self):
+        return len(self.thread_list)
+
+    def refresh_thread(self, index, func, args):
+        self.thread_list[index].refresh(func=func, args=args)
+

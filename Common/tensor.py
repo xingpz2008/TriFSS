@@ -5,7 +5,7 @@ from Pythonic_TriFSS.Common.group_elements import GroupElements
 # TODO: Add Elementwise Addition
 
 class TriFSSTensor(object):
-    def __init__(self, val_list=[]):
+    def __init__(self, val_list=[], party=None):
         # self.real_tensor = np.array([1, length])
         if val_list != []:
             self.val_list = val_list
@@ -15,6 +15,7 @@ class TriFSSTensor(object):
             self.__length = 0
         else:
             self.__length = len(val_list)
+        self.party = party
 
     def __mul__(self, other):
         assert (type(other) in [TriFSSTensor, int, float, GroupElements]), 'Unsupported type for tensor multiplication.'
@@ -47,6 +48,9 @@ class TriFSSTensor(object):
 
     def __getitem__(self, item):
         return self.val_list[item]
+
+    def __setitem__(self, key, value):
+        self.val_list[key] = value
 
     def __get_len__(self):
         return self.__length
