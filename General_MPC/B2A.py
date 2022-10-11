@@ -5,6 +5,8 @@ import Pythonic_TriFSS.Configs.fixed_point_repr as config
 from Pythonic_TriFSS.Communication.semi_honest_party import SemiHonestParty
 from Pythonic_TriFSS.Communication.dealer import TrustedDealer
 
+#TODO: Add massive B2A
+
 
 def generate_cross_term_triplet(bitlen=config.bitlen, scale=config.scalefactor, local_transfer=True,
                                 executor: TrustedDealer = None, filename: [str, str] = None, seed=config.seed) \

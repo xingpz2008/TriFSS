@@ -5,6 +5,7 @@ from Pythonic_TriFSS.Common.group_elements import GroupElements
 from Pythonic_TriFSS.General_MPC.B2A import generate_cross_term_triplet
 from Pythonic_TriFSS.FSS.dataClass.function_key import Correlated_DIFKey, DIFKey
 
+# TODO: Add massive B2A Pack
 
 class Mod_pack(object):
     """

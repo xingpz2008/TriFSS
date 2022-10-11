@@ -3,6 +3,7 @@ from Pythonic_TriFSS.Common.group_elements import GroupElements
 
 # TODO: Consider Optimize Tensor Operation
 # TODO: Add Elementwise Addition
+# TODO: Add thread support to Binary Operation and methods e.g. B2A
 
 class TriFSSTensor(object):
     def __init__(self, val_list=[], party=None):

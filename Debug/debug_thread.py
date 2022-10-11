@@ -2,6 +2,7 @@ from Pythonic_TriFSS.Communication.dataClass.thread import TriFSSThread, TriFSST
 from Pythonic_TriFSS.Communication.semi_honest_party import SemiHonestParty
 from Pythonic_TriFSS.Utils.thread_tool import get_loc_list
 
+
 def test_func(x):
     print(x)
     return x
@@ -13,6 +14,4 @@ for i in range(6):
     party.add_thread(new)
 
 party.start_all_thread()
-list_ = get_loc_list(512, )
 pass
-
