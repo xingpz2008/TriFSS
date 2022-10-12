@@ -5,6 +5,9 @@ import Pythonic_TriFSS.Communication.api as api
 import Pythonic_TriFSS.Configs.fixed_point_repr as repr_config
 
 
+# TODO: Add tangent
+# TODO: Add bit-decomposition with smaller LUT
+
 def clear_sin(x: GroupElements) -> GroupElements:
     """
     This function is the cleartext implementation of sine, for accuracy evaluation only.
@@ -27,10 +30,10 @@ def clear_sin(x: GroupElements) -> GroupElements:
         b = coefficients[i]['b'] * containment_result[i] + b
         c = coefficients[i]['c'] * containment_result[i] + c
     new_x = x * b + c
+    new_x = lib.clear_bits_removal(new_x, 1)
     del containment_result
     result = lib.clear_dpf_all(new_x, 0.5)
     for i in range(result.__get_len__()):
         res = res + (sin_var[i] * result[i])
     res = res * a
     return res
-

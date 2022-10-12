@@ -1,19 +1,27 @@
 from Pythonic_TriFSS.Common.group_elements import GroupElements
 from Pythonic_TriFSS.Utils.random_sample import sampleGroupElements
 from Pythonic_TriFSS.General_MPC.dataClass.triplet import CrossTermTriplets
-import Pythonic_TriFSS.Configs.fixed_point_repr as config
+import Pythonic_TriFSS.Configs.fixed_point_repr as repr_config
 from Pythonic_TriFSS.Communication.semi_honest_party import SemiHonestParty
 from Pythonic_TriFSS.Communication.dealer import TrustedDealer
+import Pythonic_TriFSS.Configs.general_mpc as config
+from Pythonic_TriFSS.Utils.thread_tool import get_loc_list
+from Pythonic_TriFSS.Common.tensor import TriFSSTensor
+from Pythonic_TriFSS.Communication.dataClass.thread import TriFSSThread
 
-#TODO: Add massive B2A
 
-
-def generate_cross_term_triplet(bitlen=config.bitlen, scale=config.scalefactor, local_transfer=True,
-                                executor: TrustedDealer = None, filename: [str, str] = None, seed=config.seed) \
+def generate_cross_term_triplet(bitlen=repr_config.bitlen,
+                                scale=repr_config.scalefactor,
+                                local_transfer=True,
+                                mark=True,
+                                executor: TrustedDealer = None,
+                                filename: [str, str] = None,
+                                seed=repr_config.seed) \
         -> [CrossTermTriplets, CrossTermTriplets]:
     """
     This function generates xy mult triplets for P0 have x, P1 have y (Not additive shares)
     # TODO: How to process multiplication loss?
+    :param mark:
     :param seed:
     :param local_transfer:
     :param filename:
@@ -23,7 +31,8 @@ def generate_cross_term_triplet(bitlen=config.bitlen, scale=config.scalefactor, 
     :return:
     """
     if executor is not None:
-        executor.set_start_marker('B2A', 'offline')
+        if mark:
+            executor.set_start_marker('B2A', 'offline')
     a = sampleGroupElements(bitlen, scale, seed)
     b = sampleGroupElements(bitlen, scale, seed)
     r = sampleGroupElements(bitlen, scale, seed)
@@ -42,12 +51,85 @@ def generate_cross_term_triplet(bitlen=config.bitlen, scale=config.scalefactor, 
             executor.send(data=CrossTermTriplets(b, r), name=filename[1])
             executor.eliminate_start_marker('B2A', 'offline')
             return filename
-    executor.eliminate_start_marker('B2A', 'offline')
+    if mark:
+        executor.eliminate_start_marker('B2A', 'offline')
     return CrossTermTriplets(a, z), CrossTermTriplets(b, r)
 
 
-def B2A(x: int, triplet, party: SemiHonestParty, bitlen=config.bitlen, scale=config.scalefactor, DEBUG=False) \
-        -> GroupElements:
+def generate_range_triplets(interval: (int, int),
+                            result_vector_0: TriFSSTensor,
+                            result_vector_1: TriFSSTensor,
+                            party: TrustedDealer,
+                            include_right=False,
+                            bitlen=repr_config.bitlen,
+                            scale=repr_config.scalefactor,
+                            seed=repr_config.seed):
+    """
+    This function generates triplets with certain range in single thread.
+    :param result_vector_1:
+    :param result_vector_0:
+    :param interval:
+    :param party:
+    :param include_right:
+    :param bitlen:
+    :param scale:
+    :param filename:
+    :param seed:
+    :return:
+    """
+    for i in range(interval[0], interval[1] + int(include_right)):
+        result_vector_0[i], result_vector_1[i] = generate_cross_term_triplet(bitlen=bitlen,
+                                                                             scale=scale,
+                                                                             local_transfer=False,
+                                                                             mark=False,
+                                                                             executor=party,
+                                                                             filename=None,
+                                                                             seed=seed)
+
+
+def generate_massive_cross_term_triplet(number,
+                                        party: TrustedDealer,
+                                        bitlen=repr_config.bitlen,
+                                        scale=repr_config.scalefactor,
+                                        local_transfer=True,
+                                        thread=config.default_thread,
+                                        filename: [str, str] = None,
+                                        seed=repr_config.seed):
+    """
+    This function generates massive cross_term_triplets.
+    :param thread:
+    :param number:
+    :param bitlen:
+    :param scale:
+    :param local_transfer:
+    :param party:
+    :param filename:
+    :param seed:
+    :return:
+    """
+    party.set_start_marker("B2A", 'offline')
+    segementation = get_loc_list(fullNum=number, threadNum=thread)
+    if 0 not in segementation:
+        segementation = [0] + segementation
+    result_vector_0 = TriFSSTensor([None] * number)
+    result_vector_1 = TriFSSTensor([None] * number)
+    for i in range(thread):
+        new_thread = TriFSSThread(func=generate_range_triplets, args=[(segementation[i], segementation[i + 1]),
+                                                                      result_vector_0,
+                                                                      result_vector_1,
+                                                                      party,
+                                                                      int((i + 1) == thread),
+                                                                      bitlen,
+                                                                      scale,
+                                                                      seed])
+        party.add_thread(new_thread)
+    party.start_all_thread()
+
+    party.eliminate_start_marker("B2A", 'offline')
+
+
+def B2A(x: int, triplet, party: SemiHonestParty, bitlen=repr_config.bitlen,
+        scale=repr_config.scalefactor, DEBUG=False) -> GroupElements:
     """
     This is the protocol converts Boolean shares to arithmetic Shares (1 -> l)
     Triplets should be read locally, while delta to be read at online stage

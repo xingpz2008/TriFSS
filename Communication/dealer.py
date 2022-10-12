@@ -1,6 +1,7 @@
 from Pythonic_TriFSS.Communication import api
 from Pythonic_TriFSS.Utils.dataClass.statistic_pack import statistic_pack
 import Pythonic_TriFSS.Configs.communication as config
+from Pythonic_TriFSS.Communication.dataClass.thread import TriFSSThreadFactory, TriFSSThread
 
 
 class TrustedDealer(object):
@@ -8,6 +9,7 @@ class TrustedDealer(object):
     Currently, the produced data are stored locally without Internet transfer.
     """
     def __init__(self, LOG=config.LOG):
+        self.threadFactory = TriFSSThreadFactory()
         self.statistic_pack = statistic_pack()
         self.LOG = LOG
 
@@ -32,6 +34,12 @@ class TrustedDealer(object):
             self.statistic_pack.eliminate_online_maker(func)
         else:
             self.statistic_pack.eliminate_offline_maker(func)
+
+    def add_thread(self, new_thread: TriFSSThread):
+        self.threadFactory.append(new_thread=new_thread)
+
+    def start_all_thread(self):
+        self.threadFactory.execute()
 
     def get_performance_statics(self):
         self.statistic_pack.print()
