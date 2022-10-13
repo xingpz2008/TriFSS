@@ -318,5 +318,6 @@ def evalAllDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_DPFKey 
     #     result_tensor.add_elements(dpf_value)
     # We do not apply B2A here.
     party.empty_cache_dict()
+    party.empty_thread_pool()
     party.eliminate_start_marker(func='evalAllDPF')
     return result_tensor

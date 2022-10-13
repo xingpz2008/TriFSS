@@ -1,3 +1,5 @@
+from typing import List
+
 from Pythonic_TriFSS.Common.group_elements import GroupElements
 from Pythonic_TriFSS.Utils.random_sample import sampleGroupElements
 from Pythonic_TriFSS.General_MPC.dataClass.triplet import CrossTermTriplets
@@ -108,13 +110,13 @@ def generate_massive_cross_term_triplet(number,
     :return:
     """
     party.set_start_marker("B2A", 'offline')
-    segementation = get_loc_list(fullNum=number, threadNum=thread)
-    if 0 not in segementation:
-        segementation = [0] + segementation
+    segmentation = get_loc_list(fullNum=number, threadNum=thread)
+    if 0 not in segmentation:
+        segmentation = [0] + segmentation
     result_vector_0 = TriFSSTensor([None] * number)
     result_vector_1 = TriFSSTensor([None] * number)
     for i in range(thread):
-        new_thread = TriFSSThread(func=generate_range_triplets, args=[(segementation[i], segementation[i + 1]),
+        new_thread = TriFSSThread(func=generate_range_triplets, args=[(segmentation[i], segmentation[i + 1]),
                                                                       result_vector_0,
                                                                       result_vector_1,
                                                                       party,
@@ -124,8 +126,15 @@ def generate_massive_cross_term_triplet(number,
                                                                       seed])
         party.add_thread(new_thread)
     party.start_all_thread()
-
+    if local_transfer:
+        if filename is None:
+            filename_0 = f'B2A_massive_{bitlen}_{scale}_{number}_0.triplet'
+            filename_1 = f'B2A_massive_{bitlen}_{scale}_{number}_1.triplet'
+            filename = [filename_0, filename_1]
+        party.send(data=result_vector_0, name=filename[0])
+        party.send(data=result_vector_1, name=filename[1])
     party.eliminate_start_marker("B2A", 'offline')
+    return result_vector_0, result_vector_1
 
 
 def B2A(x: int, triplet, party: SemiHonestParty, bitlen=repr_config.bitlen,
@@ -173,3 +182,54 @@ def B2A(x: int, triplet, party: SemiHonestParty, bitlen=repr_config.bitlen,
     result = x_in_Group - (mult_result * 2)
     party.eliminate_start_marker(func='B2A', func_type='online')
     return result
+
+
+def tensor_like_B2A(x: List,
+                    triplet: str,
+                    party: SemiHonestParty,
+                    bitlen=repr_config.bitlen,
+                    scale=repr_config.scalefactor,
+                    thread=config.default_thread,
+                    DEBUG=config.DEBUG) -> TriFSSTensor:
+    """
+    This function executes the B2A on the TriFSSTensor with multiple threads.
+    :param x:
+    :param triplet:
+    :param party:
+    :param bitlen:
+    :param scale:
+    :param thread:
+    :param DEBUG:
+    :return:
+    """
+    assert (party.party_id == 0 or party.party_id == 1), "Invalid party id"
+    assert (type(triplet) in [str]), f"Can not identify triplets in format {type(triplet)}"
+    party.set_start_marker(func='B2A', func_type='online')
+    # We load the triplet pack from local file, the loaded one is [triplet[0], triplet[1], ...]
+    # TODO: We still need to modify triple pack class as we need 2 tensors, 1 for a, one for ab_b
+    triplet_pack: TriFSSTensor = party.local_recv(triplet)
+    delta_tensor = TriFSSTensor([None] * len(x))
+    segmentation = [0] + get_loc_list(fullNum=len(x), threadNum=thread)
+    x_in_group = TriFSSTensor([None] * len(x))
+
+    # First, we call new thread to process delta-x
+    def construct_delta(index: [int, int], include_right=False):
+        for j in range(index[0], index[1] + int(include_right)):
+            x_in_group[j] = GroupElements(x[j], bitlen=bitlen, scale=scale)
+            delta_tensor[j] = GroupElements(x[j], bitlen=bitlen, scale=scale) - triplet_pack[j].a
+
+    for i in thread:
+        new_thread = TriFSSThread(func=construct_delta,
+                                  args=[[segmentation[i], segmentation[i + 1]], ((i + 1) == thread)])
+        party.add_thread(new_thread)
+    party.start_all_thread()
+    party.send(delta_tensor)
+    recv_tensor: TriFSSTensor = party.recv()
+    party.empty_thread_pool()
+    # Then, we re-construct the multi_res
+    if party.party_id == 0:
+        # TODO: Fix here
+        mult_res_vector = recv_tensor * x_in_group
+    else:
+        mult_res_vector = recv_tensor * triplet_pack
+    pass

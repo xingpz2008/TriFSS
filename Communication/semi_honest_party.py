@@ -63,5 +63,8 @@ class SemiHonestParty(object):
     def refresh_thread_pool_item(self, index, func, args):
         self.threadFactory.refresh_thread(index, func, args)
 
+    def empty_thread_pool(self):
+        self.threadFactory.empty_thread_pool()
+
     def get_performance_statics(self):
         self.statistic_pack.print()

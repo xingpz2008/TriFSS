@@ -1,4 +1,7 @@
 from Pythonic_TriFSS.Common.group_elements import GroupElements
+import Pythonic_TriFSS.Configs.general_mpc as mpc_config
+from Pythonic_TriFSS.Utils.thread_tool import get_loc_list
+from Pythonic_TriFSS.Communication.dataClass.thread import TriFSSThread
 
 
 # TODO: Consider Optimize Tensor Operation
@@ -17,18 +20,26 @@ class TriFSSTensor(object):
         else:
             self.__length = len(val_list)
         self.party = party
+        if self.party is not None:
+            self.thread = mpc_config.default_thread
+        else:
+            self.thread = 1
 
     def __mul__(self, other):
         assert (type(other) in [TriFSSTensor, int, float, GroupElements]), 'Unsupported type for tensor multiplication.'
         new_tensor = TriFSSTensor()
-        for i in range(self.__length):
-            if type(other) == TriFSSTensor:
-                assert (self.__length == other.__get_len__()), 'Only the same length can be applied when tensor * ' \
-                                                               'tensor '
-                this_value = self.val_list[i] * other.val_list[i]
-            else:
-                this_value = self.val_list[i] * other
-            new_tensor.add_elements(this_value)
+        if self.thread > 1:
+            new_tensor = self.__elementwise_mul_with_thread(other)
+        else:
+            for i in range(self.__length):
+                if type(other) == TriFSSTensor:
+                    assert (self.__length == other.__get_len__()), 'Only the same length can be applied when ' \
+                                                                   'tensor * ' \
+                                                                   'tensor '
+                    this_value = self.val_list[i] * other.val_list[i]
+                else:
+                    this_value = self.val_list[i] * other
+                new_tensor.add_elements(this_value)
         return new_tensor
 
     def add_elements(self, x):
@@ -45,7 +56,7 @@ class TriFSSTensor(object):
         :return:
         """
         assert (type(other) == TriFSSTensor), '+ operation can only be applied to TriFSSTensor'
-        return TriFSSTensor(self.val_list+other.val_list)
+        return TriFSSTensor(self.val_list + other.val_list)
 
     def __getitem__(self, item):
         return self.val_list[item]
@@ -55,3 +66,25 @@ class TriFSSTensor(object):
 
     def __get_len__(self):
         return self.__length
+
+    def __elementwise_mul_with_thread(self, other):
+        """
+        We assume that the two operands are of the same length
+        :param other:
+        :return:
+        """
+        # assert (self.thread > 1), 'Please set thread num > 1 in ~/Configs/general_mpc.py'
+        segmentation = [0] + get_loc_list(fullNum=self.__length, threadNum=self.thread)
+        result_tensor = TriFSSTensor([None] * self.__length)
+
+        def __range__mult(interval: [int, int], include_right=False):
+            for j in range(interval[0], interval[1] + int(include_right)):
+                result_tensor[j] = self[j] * other[j]
+
+        for i in range(self.thread):
+            new_thread = TriFSSThread(func=__range__mult, args=[[segmentation[i], segmentation[i + 1]],
+                                                                ((x + 1) == self.thread)])
+            self.party.add_thread(new_thread)
+        self.party.start_all_thread()
+        self.party.empty_thread_pool()
+        return result_tensor

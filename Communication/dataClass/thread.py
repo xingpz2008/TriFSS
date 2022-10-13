@@ -1,6 +1,7 @@
 from threading import Thread
 import Pythonic_TriFSS.Utils.thread_tool as utils
 
+# TODO: If a ttop method is necessary?
 
 class TriFSSThread(Thread):
     def __init__(self, func, args=()):
@@ -46,4 +47,7 @@ class TriFSSThreadFactory(object):
 
     def refresh_thread(self, index, func, args):
         self.thread_list[index].refresh(func=func, args=args)
+
+    def empty_thread_pool(self):
+        self.thread_list = []
 
