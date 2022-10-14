@@ -10,6 +10,7 @@ import Pythonic_TriFSS.Configs.general_mpc as config
 from Pythonic_TriFSS.Utils.thread_tool import get_loc_list
 from Pythonic_TriFSS.Common.tensor import TriFSSTensor
 from Pythonic_TriFSS.Communication.dataClass.thread import TriFSSThread
+from Pythonic_TriFSS.General_MPC.dataClass.protocol_offline_pack import massive_B2A_triplet_pack
 
 
 def generate_cross_term_triplet(bitlen=repr_config.bitlen,
@@ -59,8 +60,8 @@ def generate_cross_term_triplet(bitlen=repr_config.bitlen,
 
 
 def generate_range_triplets(interval: (int, int),
-                            result_vector_0: TriFSSTensor,
-                            result_vector_1: TriFSSTensor,
+                            pack_0: massive_B2A_triplet_pack,
+                            pack_1: massive_B2A_triplet_pack,
                             party: TrustedDealer,
                             include_right=False,
                             bitlen=repr_config.bitlen,
@@ -68,25 +69,29 @@ def generate_range_triplets(interval: (int, int),
                             seed=repr_config.seed):
     """
     This function generates triplets with certain range in single thread.
-    :param result_vector_1:
-    :param result_vector_0:
+    :param pack_1:
+    :param pack_0:
     :param interval:
     :param party:
     :param include_right:
     :param bitlen:
     :param scale:
-    :param filename:
     :param seed:
     :return:
     """
     for i in range(interval[0], interval[1] + int(include_right)):
-        result_vector_0[i], result_vector_1[i] = generate_cross_term_triplet(bitlen=bitlen,
-                                                                             scale=scale,
-                                                                             local_transfer=False,
-                                                                             mark=False,
-                                                                             executor=party,
-                                                                             filename=None,
-                                                                             seed=seed)
+        generated_result: tuple[CrossTermTriplets, CrossTermTriplets] = generate_cross_term_triplet(bitlen=bitlen,
+                                                                                                    scale=scale,
+                                                                                                    local_transfer
+                                                                                                    =False,
+                                                                                                    mark=False,
+                                                                                                    executor=party,
+                                                                                                    filename=None,
+                                                                                                    seed=seed)
+        pack_0.a_tensor[i] = generated_result[0].a
+        pack_0.ab_b_tensor[i] = generated_result[0].ab_b
+        pack_1.a_tensor[i] = generated_result[1].a
+        pack_1.ab_b_tensor[i] = generated_result[1].ab_b
 
 
 def generate_massive_cross_term_triplet(number,
@@ -113,12 +118,12 @@ def generate_massive_cross_term_triplet(number,
     segmentation = get_loc_list(fullNum=number, threadNum=thread)
     if 0 not in segmentation:
         segmentation = [0] + segmentation
-    result_vector_0 = TriFSSTensor([None] * number)
-    result_vector_1 = TriFSSTensor([None] * number)
+    pack_0 = massive_B2A_triplet_pack(number=number)
+    pack_1 = massive_B2A_triplet_pack(number=number)
     for i in range(thread):
         new_thread = TriFSSThread(func=generate_range_triplets, args=[(segmentation[i], segmentation[i + 1]),
-                                                                      result_vector_0,
-                                                                      result_vector_1,
+                                                                      pack_0,
+                                                                      pack_1,
                                                                       party,
                                                                       int((i + 1) == thread),
                                                                       bitlen,
@@ -128,13 +133,13 @@ def generate_massive_cross_term_triplet(number,
     party.start_all_thread()
     if local_transfer:
         if filename is None:
-            filename_0 = f'B2A_massive_{bitlen}_{scale}_{number}_0.triplet'
-            filename_1 = f'B2A_massive_{bitlen}_{scale}_{number}_1.triplet'
+            filename_0 = f'B2A_massive_{bitlen}_{scale}_{number}_0.pack'
+            filename_1 = f'B2A_massive_{bitlen}_{scale}_{number}_1.pack'
             filename = [filename_0, filename_1]
-        party.send(data=result_vector_0, name=filename[0])
-        party.send(data=result_vector_1, name=filename[1])
+        party.send(data=pack_0, name=filename[0])
+        party.send(data=pack_1, name=filename[1])
     party.eliminate_start_marker("B2A", 'offline')
-    return result_vector_0, result_vector_1
+    return pack_0, pack_1
 
 
 def B2A(x: int, triplet, party: SemiHonestParty, bitlen=repr_config.bitlen,
@@ -206,8 +211,7 @@ def tensor_like_B2A(x: List,
     assert (type(triplet) in [str]), f"Can not identify triplets in format {type(triplet)}"
     party.set_start_marker(func='B2A', func_type='online')
     # We load the triplet pack from local file, the loaded one is [triplet[0], triplet[1], ...]
-    # TODO: We still need to modify triple pack class as we need 2 tensors, 1 for a, one for ab_b
-    triplet_pack: TriFSSTensor = party.local_recv(triplet)
+    triplet_pack: massive_B2A_triplet_pack = party.local_recv(triplet)
     delta_tensor = TriFSSTensor([None] * len(x))
     segmentation = [0] + get_loc_list(fullNum=len(x), threadNum=thread)
     x_in_group = TriFSSTensor([None] * len(x))
@@ -216,7 +220,7 @@ def tensor_like_B2A(x: List,
     def construct_delta(index: [int, int], include_right=False):
         for j in range(index[0], index[1] + int(include_right)):
             x_in_group[j] = GroupElements(x[j], bitlen=bitlen, scale=scale)
-            delta_tensor[j] = GroupElements(x[j], bitlen=bitlen, scale=scale) - triplet_pack[j].a
+            delta_tensor[j] = GroupElements(x[j], bitlen=bitlen, scale=scale) - triplet_pack.a_tensor[j]
 
     for i in thread:
         new_thread = TriFSSThread(func=construct_delta,
@@ -225,11 +229,14 @@ def tensor_like_B2A(x: List,
     party.start_all_thread()
     party.send(delta_tensor)
     recv_tensor: TriFSSTensor = party.recv()
+    recv_tensor.update_to_thread_tensor(party=party)
     party.empty_thread_pool()
     # Then, we re-construct the multi_res
     if party.party_id == 0:
         # TODO: Fix here
-        mult_res_vector = recv_tensor * x_in_group
+        mult_res_vector = recv_tensor * x_in_group + triplet_pack.ab_b_tensor
     else:
-        mult_res_vector = recv_tensor * triplet_pack
-    pass
+        mult_res_vector = recv_tensor * triplet_pack + triplet_pack.ab_b_tensor
+    result = x_in_group - (mult_res_vector * 2)
+    party.eliminate_start_marker(func='B2A', func_type='online')
+    return result

@@ -4,9 +4,9 @@ import Pythonic_TriFSS.Configs.fixed_point_repr as config
 from Pythonic_TriFSS.Common.group_elements import GroupElements
 from Pythonic_TriFSS.General_MPC.B2A import generate_cross_term_triplet
 from Pythonic_TriFSS.FSS.dataClass.function_key import Correlated_DIFKey, DIFKey
+from Pythonic_TriFSS.Common.tensor import TriFSSTensor
 
 
-# TODO: Add massive B2A Pack
 
 class Mod_pack(object):
     """
@@ -26,3 +26,9 @@ class Containment_pack(object):
     def add_key(self, key: Union[DIFKey, Correlated_DIFKey]):
         self.key_list.append(key)
         self.len += 1
+
+
+class massive_B2A_triplet_pack(object):
+    def __init__(self, number=0):
+        self.a_tensor = TriFSSTensor([None] * number)
+        self.ab_b_tensor = TriFSSTensor([None] * number)
