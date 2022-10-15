@@ -38,6 +38,9 @@ class TrustedDealer(object):
     def add_thread(self, new_thread: TriFSSThread):
         self.threadFactory.append(new_thread=new_thread)
 
+    def empty_thread_pool(self):
+        self.threadFactory.empty_thread_pool()
+
     def start_all_thread(self):
         self.threadFactory.execute()
 

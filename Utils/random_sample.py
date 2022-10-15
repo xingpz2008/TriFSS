@@ -17,4 +17,4 @@ def sampleGroupElements(bitlen=bitlen, scale=scalefactor, seed=None) -> GroupEle
     else:
         random.seed(seed)
     ring = 2 ** bitlen - 1
-    return GroupElements(random.uniform(-ring, ring), bitlen, scale, DEBUG=DEBUG)
+    return GroupElements(random.uniform(-ring, ring), bitlen=bitlen, scale=scale, DEBUG=DEBUG)

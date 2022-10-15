@@ -9,6 +9,7 @@ from Pythonic_TriFSS.Communication.dealer import TrustedDealer
 from Pythonic_TriFSS.Common.tensor import TriFSSTensor
 from Pythonic_TriFSS.Utils.thread_tool import get_loc_list
 from Pythonic_TriFSS.Communication.dataClass.thread import TriFSSThread
+import Pythonic_TriFSS.Configs.fixed_point_repr as repr_config
 
 
 def keygenDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, filename=None,
@@ -95,6 +96,7 @@ def evalDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, filena
             thread=1, sec_para=config.sec_para, mark=True, DEBUG=config.DEBUG):
     """
     This function evaluates DPF at key with the public value x
+    :param mark:
     :param thread:
     :param enable_cache: check if we enable cache optimization
     :param filename:
@@ -148,13 +150,15 @@ def evalDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, filena
     return action_bit
 
 
-def keygenCorrelatedDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, filename=None,
+def keygenCorrelatedDPF(party: TrustedDealer, bitlen=repr_config.bitlen, scale=repr_config.scalefactor,
+                        sec_para=config.sec_para, filename=None,
                         local_transfer=True, seed=config.seed, DEBUG=config.DEBUG) -> tuple:
     """
     This function returns the correlated DPF keys. The insight is that, we produce DPF at the random place from group,
     then construct delta and sending to each other.
+    :param scale:
+    :param bitlen:
     :param local_transfer:
-    :param x: This is data-independent function
     :param seed:
     :param party:
     :param sec_para:
@@ -163,11 +167,11 @@ def keygenCorrelatedDPF(x: GroupElements, party: TrustedDealer, sec_para=config.
     :return:
     """
     party.set_start_marker('keygenCorrelatedDPF', 'offline')
-    r = sampleGroupElements(x.bitlen, x.scalefactor, seed)
-    mask = sampleGroupElements(x.bitlen, x.scalefactor, seed)
+    r = sampleGroupElements(bitlen, scale, seed)
+    mask = sampleGroupElements(bitlen, scale, seed)
     k0 = Correlated_DPFKey()
     k1 = Correlated_DPFKey()
-    _k0, _k1 = keygenDPF(x=(x + r), party=party, sec_para=sec_para, filename=filename, local_transfer=False,
+    _k0, _k1 = keygenDPF(x=r, party=party, sec_para=sec_para, filename=filename, local_transfer=False,
                          DEBUG=DEBUG)
     k0.init_from_DPFKey(_k0)
     k1.init_from_DPFKey(_k1)
@@ -176,11 +180,13 @@ def keygenCorrelatedDPF(x: GroupElements, party: TrustedDealer, sec_para=config.
     k1.r = mask
     if local_transfer:
         if filename is None:
-            filename_0 = f'rDPF_{x.bitlen}_{x.scalefactor}_0.key'
-            filename_1 = f'rDPF_{x.bitlen}_{x.scalefactor}_1.key'
+            filename_0 = f'rDPF_{bitlen}_{scale}_0.key'
+            filename_1 = f'rDPF_{bitlen}_{scale}_1.key'
             filename = [filename_0, filename_1]
         party.send(k0, filename[0])
         party.send(k1, filename[1])
+        party.eliminate_start_marker('keygenCorrelatedDPF', 'offline')
+        return filename
     party.eliminate_start_marker('keygenCorrelatedDPF', 'offline')
     return k0, k1
 
@@ -189,6 +195,7 @@ def evalCorrelatedDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_
                       sec_para=config.sec_para, DEBUG=config.DEBUG):
     """
     This function evaluates DPF from a random place r and then reconstruct the to result the correct one.
+    # TODO: Consider how to fix
     :param party:
     :param x:
     :param key:
@@ -197,6 +204,7 @@ def evalCorrelatedDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_
     :param DEBUG:
     :return:
     """
+    raise NotImplementedError('This function is deprecated and should not be called at this moment!')
     party.set_start_marker(func='evalCorrelatedDPF')
     if filename is None:
         assert (key is not None), "We need at least key or keyfile to continue."
@@ -218,6 +226,7 @@ def evalCorrelatedDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_
 
 
 def evalRangeDPF(party: SemiHonestParty, x: (int, int), vector: TriFSSTensor,
+                 bitlen=repr_config.bitlen, scale=repr_config.scalefactor,
                  key: Correlated_DPFKey = None,
                  include_right_bound=False,
                  filename=None,
@@ -227,6 +236,8 @@ def evalRangeDPF(party: SemiHonestParty, x: (int, int), vector: TriFSSTensor,
     """
     This function returns a range of DPF from [x_0,x_1) with single thread.
     We did not mark the time for this function currently as we assume that this will not be individually invoked.
+    :param scale:
+    :param bitlen:
     :param vector:
     :param include_right_bound: This var checks if right boundary need to be included.
     :param party:
@@ -242,10 +253,10 @@ def evalRangeDPF(party: SemiHonestParty, x: (int, int), vector: TriFSSTensor,
         assert (key is not None), "We need at least key or keyfile to continue."
     else:
         key = party.local_recv(filename=filename)
-    for i in range(x[0], x[1] + int(include_right_bound)):
-        this_x = GroupElements(value=None, repr_value=i)
+    for i in range(x[0], x[1]):
+        this_x = GroupElements(value=None, repr_value=i, bitlen=bitlen, scale=scale)
         dpf_value = evalDPF(party=party, x=this_x, key=key, enable_cache=enable_cache,
-                            sec_para=sec_para, DEBUG=False)
+                            sec_para=sec_para, DEBUG=False, mark=False)
         vector[i] = dpf_value
         if DEBUG:
             print(f"\n[INFO] Calculation on {i} th position")
@@ -282,6 +293,7 @@ def evalAllDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_DPFKey 
     iterator = segmentation[1]
     for i in range(thread):
         new_thread = TriFSSThread(func=evalRangeDPF, args=[party, (segmentation[i], segmentation[i + 1]), result_tensor,
+                                                           x.bitlen, x.scalefactor,
                                                            key, int(i == (thread - 1)), None, enable_cache, sec_para,
                                                            DEBUG])
         party.add_thread(new_thread)

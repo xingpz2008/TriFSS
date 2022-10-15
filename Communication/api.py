@@ -28,13 +28,20 @@ def send(addr, port, data, LOG=config.LOG):
     s.close()
 
 
+def _recv(buffer, comm):
+    data = comm.recv(buffer)
+    return data
+
+
 def recv(s: socket, port, LOG=config.LOG):
+    data = b''
     comm, addr = s.accept()
-    if LOG:
-        print(f"[INFO] Connection Established with {addr}:{port}")
-    data = comm.recv(config.buffer)
-    if LOG:
-        print(f"[INFO] Data Received from {addr}:{port}")
+    while True:
+        packet = _recv(config.buffer, comm)
+        if packet is not None:
+            data += packet
+        if packet is None or len(packet) < config.buffer:
+            break
     return pickle.loads(data)
 
 

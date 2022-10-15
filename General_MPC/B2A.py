@@ -60,8 +60,8 @@ def generate_cross_term_triplet(bitlen=repr_config.bitlen,
 
 
 def generate_range_triplets(interval: (int, int),
-                            pack_0: massive_B2A_triplet_pack,
-                            pack_1: massive_B2A_triplet_pack,
+                            pack_0,
+                            pack_1,
                             party: TrustedDealer,
                             include_right=False,
                             bitlen=repr_config.bitlen,
@@ -120,17 +120,20 @@ def generate_massive_cross_term_triplet(number,
         segmentation = [0] + segmentation
     pack_0 = massive_B2A_triplet_pack(number=number)
     pack_1 = massive_B2A_triplet_pack(number=number)
+    if number < thread:
+        thread = number
     for i in range(thread):
         new_thread = TriFSSThread(func=generate_range_triplets, args=[(segmentation[i], segmentation[i + 1]),
                                                                       pack_0,
                                                                       pack_1,
                                                                       party,
-                                                                      int((i + 1) == thread),
+                                                                      False,
                                                                       bitlen,
                                                                       scale,
                                                                       seed])
         party.add_thread(new_thread)
     party.start_all_thread()
+    party.empty_thread_pool()
     if local_transfer:
         if filename is None:
             filename_0 = f'B2A_massive_{bitlen}_{scale}_{number}_0.pack'
@@ -138,6 +141,8 @@ def generate_massive_cross_term_triplet(number,
             filename = [filename_0, filename_1]
         party.send(data=pack_0, name=filename[0])
         party.send(data=pack_1, name=filename[1])
+        party.eliminate_start_marker("B2A", 'offline')
+        return filename
     party.eliminate_start_marker("B2A", 'offline')
     return pack_0, pack_1
 
@@ -189,7 +194,7 @@ def B2A(x: int, triplet, party: SemiHonestParty, bitlen=repr_config.bitlen,
     return result
 
 
-def tensor_like_B2A(x: List,
+def tensor_like_B2A(x: List | TriFSSTensor,
                     triplet: str,
                     party: SemiHonestParty,
                     bitlen=repr_config.bitlen,
@@ -209,20 +214,25 @@ def tensor_like_B2A(x: List,
     """
     assert (party.party_id == 0 or party.party_id == 1), "Invalid party id"
     assert (type(triplet) in [str]), f"Can not identify triplets in format {type(triplet)}"
-    party.set_start_marker(func='B2A', func_type='online')
+    party.set_start_marker(func='tensorlike_B2A', func_type='online')
     # We load the triplet pack from local file, the loaded one is [triplet[0], triplet[1], ...]
+    if type(x) == TriFSSTensor:
+        x_len = x.__get_len__()
+    else:
+        x_len = len(x)
     triplet_pack: massive_B2A_triplet_pack = party.local_recv(triplet)
-    delta_tensor = TriFSSTensor([None] * len(x))
-    segmentation = [0] + get_loc_list(fullNum=len(x), threadNum=thread)
-    x_in_group = TriFSSTensor([None] * len(x))
+    delta_tensor = TriFSSTensor([None] * x_len)
+    segmentation = [0] + get_loc_list(fullNum=x_len, threadNum=thread)
+    x_in_group = TriFSSTensor([None] * x_len, party=party)
 
     # First, we call new thread to process delta-x
     def construct_delta(index: [int, int], include_right=False):
-        for j in range(index[0], index[1] + int(include_right)):
+        for j in range(index[0], index[1]):
             x_in_group[j] = GroupElements(x[j], bitlen=bitlen, scale=scale)
             delta_tensor[j] = GroupElements(x[j], bitlen=bitlen, scale=scale) - triplet_pack.a_tensor[j]
-
-    for i in thread:
+    if x_len < thread:
+        thread = x_len
+    for i in range(thread):
         new_thread = TriFSSThread(func=construct_delta,
                                   args=[[segmentation[i], segmentation[i + 1]], ((i + 1) == thread)])
         party.add_thread(new_thread)
@@ -236,7 +246,7 @@ def tensor_like_B2A(x: List,
         # TODO: Fix here
         mult_res_vector = recv_tensor * x_in_group + triplet_pack.ab_b_tensor
     else:
-        mult_res_vector = recv_tensor * triplet_pack + triplet_pack.ab_b_tensor
+        mult_res_vector = recv_tensor * triplet_pack.a_tensor + triplet_pack.ab_b_tensor
     result = x_in_group - (mult_res_vector * 2)
-    party.eliminate_start_marker(func='B2A', func_type='online')
+    party.eliminate_start_marker(func='tensorlike_B2A', func_type='online')
     return result

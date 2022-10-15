@@ -6,7 +6,7 @@ import pickle
 import math
 
 
-def sin_coefficients(save: False, filename=None, truncated_scale=1+repr_config.scalefactor) -> LookUpTable:
+def sin_coefficients(save: False, filename=None, truncated_scale=2+repr_config.scalefactor) -> LookUpTable:
     """
     Look up table for sin coefficients.
     :param truncated_scale:
@@ -42,32 +42,41 @@ def sin_coefficients(save: False, filename=None, truncated_scale=1+repr_config.s
                                                                f'{repr_config.bitlen}_{repr_config.scalefactor}.lut'
         with open(filename, 'wb+') as f:
             pickle.dump(lut, f)
+        return filename
     return lut
 
 
-def sin_val(save: False, filename=None) -> LookUpTable:
+def sin_val(save: False, filename=None,
+            key_bitlen=repr_config.bitlen, key_scale=repr_config.scalefactor,
+            value_bitlen=repr_config.bitlen, value_scale=repr_config.scalefactor) -> LookUpTable:
     """
     This function generates sin value in Group elements
     LUT Struct:
     val = GroupElements(f(x))
     key = x in real_value
+    :param value_scale:
+    :param key_scale:
+    :param key_bitlen:
+    :param value_bitlen:
     :param save:
     :param filename:
     :return:
     """
     lut_ = LookUpTable()
-    entries = 2 ** repr_config.bitlen
-    solution = 1 / (2 ** repr_config.scalefactor)
+    entries = 2 ** key_bitlen
+    solution = 1 / (2 ** key_scale)
     for i in range(entries):
         this_x = i * solution
         val = math.sin(this_x * math.pi)
-        lut_.add_elements(GroupElements(value=val, DEBUG=True), GroupElements(value=this_x, DEBUG=True))
+        lut_.add_elements(GroupElements(value=val, bitlen=value_bitlen, scale=value_scale, DEBUG=True),
+                          GroupElements(value=this_x, bitlen=value_bitlen, scale=value_scale, DEBUG=True))
     if save:
         if filename is None:
             filename = communication_config.default_filepath + f'publicSin_' \
-                                                               f'{repr_config.bitlen}_{repr_config.scalefactor}.lut'
+                                                               f'{value_bitlen}_{value_scale}.lut'
         with open(filename, 'wb+') as f:
             pickle.dump(lut_, f)
+        return filename
     return lut_
 
 

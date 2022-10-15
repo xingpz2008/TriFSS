@@ -75,10 +75,11 @@ def evalDIF(party: SemiHonestParty, x: GroupElements, key: DIFKey = None, filena
 
 
 def keygenCorrelatedDIF(interval: (GroupElements, GroupElements), party: TrustedDealer, filename=None,
-                        sec_para=config.sec_para,
+                        sec_para=config.sec_para, unsigned=False,
                         local_transfer=True, DEBUG=config.DEBUG):
     """
     This function returns the correlated DIF key for the target interval
+    :param unsigned:
     :param interval:
     :param party:
     :param filename:
@@ -87,14 +88,18 @@ def keygenCorrelatedDIF(interval: (GroupElements, GroupElements), party: Trusted
     :param DEBUG:
     :return:
     """
-    assert (interval[1] > interval[0]), 'Invalid Interval Sequence'
-    # inverse = ((interval[0] < 0) and (interval[1] > 0))
+    # TODO: Check Inverse, we need unsigned here for non-inverse comparison
+    if not unsigned:
+        assert (interval[1] > interval[0]), 'Invalid Interval Sequence'
+    inverse = False if unsigned else None
     party.set_start_marker('keygenCorrelatedDIF', 'offline')
     k0 = Correlated_DIFKey()
     k1 = Correlated_DIFKey()
     k0.interval_0_key, k1.interval_0_key = keygenCorrelatedDCF(x=interval[0], party=party, sec_para=sec_para,
+                                                               inverse=inverse,
                                                                local_transfer=False, DEBUG=DEBUG)
     k0.interval_1_key, k1.interval_1_key = keygenCorrelatedDCF(x=interval[1], party=party, local_transfer=False,
+                                                               inverse=inverse,
                                                                sec_para=sec_para, DEBUG=DEBUG)
     if local_transfer:
         if filename is None:
@@ -107,7 +112,8 @@ def keygenCorrelatedDIF(interval: (GroupElements, GroupElements), party: Trusted
     return k0, k1
 
 
-def evalCorrelatedDIF(party: SemiHonestParty, x: GroupElements, key: Correlated_DIFKey = None, filename=None,
+def evalCorrelatedDIF(party: SemiHonestParty, x: GroupElements,
+                      key: Correlated_DIFKey = None, filename=None,
                       sec_para=config.sec_para, DEBUG=config.DEBUG):
     """
     This function evaluates coorrelated DIF
