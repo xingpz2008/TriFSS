@@ -1,6 +1,6 @@
 from typing import Union
 from Pythonic_TriFSS.Common.group_elements import GroupElements
-from Pythonic_TriFSS.Common.tensor import TriFSSTensor
+import Pythonic_TriFSS.Common.tensor as Tensor
 
 
 def clear_bits_removal(x: GroupElements, removal_number: int) -> GroupElements:
@@ -30,14 +30,14 @@ def clear_mod(x: GroupElements, N: Union[int, GroupElements]) -> GroupElements:
     return result
 
 
-def clear_containment(x: GroupElements, knots_list) -> TriFSSTensor:
+def clear_containment(x: GroupElements, knots_list) -> Tensor.TriFSSTensor:
     """
     This function checks which intervals the x in.
     :param x:
     :param knots_list:
     :return:
     """
-    result_vector = TriFSSTensor()
+    result_vector = Tensor.TriFSSTensor()
     for i in range(len(knots_list) - 1):
         if (not (x > knots_list[i + 1])) and (not (x < knots_list[i])):
             result_vector.add_elements(1)
@@ -46,7 +46,7 @@ def clear_containment(x: GroupElements, knots_list) -> TriFSSTensor:
     return result_vector
 
 
-def clear_dpf_all(x: GroupElements, domain: float) -> TriFSSTensor:
+def clear_dpf_all(x: GroupElements, domain: float) -> Tensor.TriFSSTensor:
     """
     This function returns all value at place x
     :param domain:
@@ -55,7 +55,7 @@ def clear_dpf_all(x: GroupElements, domain: float) -> TriFSSTensor:
     """
     entries = 2 ** x.bitlen
     resolution = 1 / (2**x.scalefactor)
-    vector = TriFSSTensor()
+    vector = Tensor.TriFSSTensor()
     for i in range(entries):
         this_val = i * resolution
         group_this = GroupElements(value=this_val, DEBUG=True)

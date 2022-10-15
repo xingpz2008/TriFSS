@@ -1,8 +1,8 @@
 from Pythonic_TriFSS.Common.group_elements import GroupElements
-from Pythonic_TriFSS.Common.tensor import TriFSSTensor
+import Pythonic_TriFSS.Common.tensor as Tensor
 
 
-class LookUpTable(TriFSSTensor):
+class LookUpTable(Tensor.TriFSSTensor):
     def __init__(self, var_list=[], key_list=[]):
         """
         Here we use tensor-like database implementation, as we do not care the key.

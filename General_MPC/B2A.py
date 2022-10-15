@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 from Pythonic_TriFSS.Common.group_elements import GroupElements
 from Pythonic_TriFSS.Utils.random_sample import sampleGroupElements
@@ -194,7 +194,7 @@ def B2A(x: int, triplet, party: SemiHonestParty, bitlen=repr_config.bitlen,
     return result
 
 
-def tensor_like_B2A(x: List | TriFSSTensor,
+def tensor_like_B2A(x: Union[List, TriFSSTensor],
                     triplet: str,
                     party: SemiHonestParty,
                     bitlen=repr_config.bitlen,
