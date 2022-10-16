@@ -15,7 +15,7 @@ def clear_sin(x: GroupElements) -> GroupElements:
     :return:
     """
     x = lib.clear_bits_removal(x, (x.bitlen - 2 - x.scalefactor))
-    x = lib.clear_mod(x, 2)
+    x = lib.clear_mod(x, 2, unsigned=True)
     containment_result = lib.clear_containment(x, [0, 0.5, 1, 1.5, 2])
     coefficients: LookUpTable = api.local_recv(f'publicSinCoefficients_{repr_config.bitlen}_'
                                                f'{repr_config.scalefactor}.lut')

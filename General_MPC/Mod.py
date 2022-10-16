@@ -10,10 +10,12 @@ from Pythonic_TriFSS.FSS.dcf import keygenCorrelatedDCF, evalCorrelatedDCF
 from Pythonic_TriFSS.General_MPC.B2A import B2A
 
 
-def Mod_offline(party: TrustedDealer, N, bitlen=repr_config.bitlen, scale=repr_config.scalefactor, filename=None,
+def Mod_offline(party: TrustedDealer, N, unsigned=False,
+                bitlen=repr_config.bitlen, scale=repr_config.scalefactor, filename=None,
                 sec_para=fss_config.sec_para, local_transfer=True, seed=fss_config.seed, DEBUG=config.DEBUG):
     """
     This function generates Mod_offline_pack
+    :param unsigned:
     :param filename:
     :param seed:
     :param sec_para:
@@ -35,7 +37,7 @@ def Mod_offline(party: TrustedDealer, N, bitlen=repr_config.bitlen, scale=repr_c
     pack_0.triplet, pack_1.triplet = generate_cross_term_triplet(bitlen=bitlen, scale=scale, local_transfer=False,
                                                                  executor=party, seed=seed)
 
-    pack_0.rDCFkey, pack_1.rDCFkey = keygenCorrelatedDCF(x=N, party=party, inverse=None, sec_para=sec_para,
+    pack_0.rDCFkey, pack_1.rDCFkey = keygenCorrelatedDCF(x=N, party=party, inverse=(not unsigned), sec_para=sec_para,
                                                          local_transfer=False, seed=seed, DEBUG=DEBUG)
     if local_transfer:
         if filename is None:

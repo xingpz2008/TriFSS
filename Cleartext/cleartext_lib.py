@@ -18,15 +18,25 @@ def clear_bits_removal(x: GroupElements, removal_number: int) -> GroupElements:
     return GroupElements(value=None, repr_value=new_value, bitlen=new_bit_len, scale=x.scalefactor)
 
 
-def clear_mod(x: GroupElements, N: Union[int, GroupElements]) -> GroupElements:
+def clear_mod(x: GroupElements, N: Union[int, GroupElements], unsigned=False) -> GroupElements:
     """
     This function calculates x % N by confirming gt relation.
+    :param unsigned:
     :param x:
     :param N:
     :return:
     """
-    sign = not (x < N)
-    result = x - (sign * N)
+    if unsigned:
+        sign = False
+        if type(N) is int:
+            N = GroupElements(N, bitlen=x.bitlen, scale=x.scalefactor)
+        for i in range(x.bitlen):
+            if x[x.bitlen-1-i] > N[x.bitlen-1-i]:
+                sign = True
+                break
+    else:
+        sign = not (x < N)
+    result = x - (N * int(sign))
     return result
 
 

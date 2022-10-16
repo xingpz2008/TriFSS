@@ -31,7 +31,8 @@ def sin_offline(party: TrustedDealer, bitlen=repr_config.bitlen, scale=repr_conf
     party.set_start_marker(func='sin', func_type='offline')
 
     # For Modular operation, we need B2A offline (generate cross triples)
-    file_dict['Mod'] = Mod_offline(party=party, N=2, bitlen=(2 + scale), scale=scale, local_transfer=True)
+    file_dict['Mod'] = Mod_offline(party=party, N=2, bitlen=(2 + scale), scale=scale,
+                                   local_transfer=True, unsigned=True)
     # For Containment pack, we need containment offline
     knots_list = TriFSSTensor([GroupElements(0, bitlen=(2 + scale)), GroupElements(0.5, bitlen=(2 + scale)),
                                GroupElements(1.0, bitlen=(2 + scale)), GroupElements(1.5, bitlen=(2 + scale)),
