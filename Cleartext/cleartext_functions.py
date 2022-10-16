@@ -1,6 +1,6 @@
 from Pythonic_TriFSS.Common.group_elements import GroupElements
 import Pythonic_TriFSS.Cleartext.cleartext_lib as lib
-from Pythonic_TriFSS.Math.dataClass.LookUpTable import LookUpTable
+from Pythonic_TriFSS.Common.tensor import LookUpTable
 import Pythonic_TriFSS.Communication.api as api
 import Pythonic_TriFSS.Configs.fixed_point_repr as repr_config
 
