@@ -2,12 +2,14 @@ class DPFKey(object):
     def __init__(self):
         self.seed = []
         self.CW_List = []
+        self.CW_payload = []
 
 
 class DCFKey(object):
     def __init__(self):
         self.seed = []
         self.CW_List = []
+        self.CW_payload = []
         self.inverse = False
 
 
@@ -25,6 +27,7 @@ class Correlated_DPFKey(DPFKey):
     def init_from_DPFKey(self, Key: DPFKey):
         self.seed = Key.seed
         self.CW_List = Key.CW_List
+        self.CW_payload = Key.CW_payload
 
 
 class Correlated_DCFKey(DCFKey):

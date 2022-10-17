@@ -1,6 +1,8 @@
+from typing import Union
+
 import Pythonic_TriFSS.Configs.fss as config
 from Pythonic_TriFSS.Common.group_elements import GroupElements
-from Pythonic_TriFSS.Utils.prg import prg
+from Pythonic_TriFSS.Utils.prg import prg, Convert_G
 from Pythonic_TriFSS.Utils.random_sample import sampleGroupElements
 from Pythonic_TriFSS.FSS.dataClass.correction_words import CW_DPF
 from Pythonic_TriFSS.FSS.dataClass.function_key import DPFKey, Correlated_DPFKey
@@ -12,12 +14,14 @@ from Pythonic_TriFSS.Communication.dataClass.thread import TriFSSThread
 import Pythonic_TriFSS.Configs.fixed_point_repr as repr_config
 
 
-def keygenDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, filename=None,
+def keygenDPF(x: GroupElements, party: TrustedDealer, payload: Union[None, GroupElements] = None,
+              sec_para=config.sec_para, filename=None,
               local_transfer=True, DEBUG=config.DEBUG) \
         -> tuple:
     """
-    This function returns the key pair for DPF @ x, payload = 1 currently.
+    This function returns the key pair for DPF @ x.
     We sample the first seed from the ring
+    :param payload:
     :param local_transfer:
     :param filename:
     :param party:
@@ -81,6 +85,16 @@ def keygenDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, 
                   f'SR = {reconstructed_seed >> 1 & (2 ** sec_para - 1)}, '
                   f'BR = {reconstructed_seed & 1}')
             print(f'Current choice is {x[x.bitlen - 1 - i]}')
+    if payload is not None:
+        CW_payload = GroupElements(value=(-1) ** action_bit_r, bitlen=payload.bitlen,
+                                   scale=payload.scalefactor, DEBUG=DEBUG) \
+                     * (payload
+                        - Convert_G(seed=level_seed_l, bitlen=payload.bitlen,
+                                    scale=payload.scalefactor, sec_para=sec_para, party=party)
+                        + Convert_G(seed=level_seed_r, bitlen=payload.bitlen,
+                                    scale=payload.scalefactor, sec_para=sec_para, party=party))
+        k0.CW_payload = CW_payload
+        k1.CW_payload = CW_payload
     if local_transfer:
         if filename is None:
             filename_0 = f'DPF_{x.bitlen}_{x.scalefactor}_0.key'
@@ -93,9 +107,10 @@ def keygenDPF(x: GroupElements, party: TrustedDealer, sec_para=config.sec_para, 
 
 
 def evalDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, filename=None, enable_cache=False,
-            thread=1, sec_para=config.sec_para, mark=True, DEBUG=config.DEBUG):
+            thread=1, sec_para=config.sec_para, mark=True, return_Arithmetic=False, DEBUG=config.DEBUG):
     """
     This function evaluates DPF at key with the public value x
+    :param return_Arithmetic:
     :param mark:
     :param thread:
     :param enable_cache: check if we enable cache optimization
@@ -145,17 +160,27 @@ def evalDPF(party: SemiHonestParty, x: GroupElements, key: DPFKey = None, filena
         if DEBUG:
             print(f'PRG Result = {prg_res}')
             print(f'pre level seed = {pre_level_seed}')
+    if return_Arithmetic:
+        CW_payload: GroupElements = key.CW_payload
+        inner_result = Convert_G(seed=level_seed, bitlen=CW_payload.bitlen, scale=CW_payload.scalefactor,
+                                 sec_para=sec_para, party=party)
+        if action_bit:
+            inner_result = inner_result + CW_payload
+        arithmetic_result = GroupElements(value=((-1) ** party.party_id), bitlen=CW_payload.bitlen,
+                                          scale=CW_payload.scalefactor, DEBUG=DEBUG) * inner_result
+        return arithmetic_result
     if mark:
         party.eliminate_start_marker('evalDPF')
     return action_bit
 
 
 def keygenCorrelatedDPF(party: TrustedDealer, bitlen=repr_config.bitlen, scale=repr_config.scalefactor,
-                        sec_para=config.sec_para, filename=None,
+                        sec_para=config.sec_para, filename=None, payload: Union[None, GroupElements] = None,
                         local_transfer=True, seed=config.seed, DEBUG=config.DEBUG) -> tuple:
     """
     This function returns the correlated DPF keys. The insight is that, we produce DPF at the random place from group,
     then construct delta and sending to each other.
+    :param payload:
     :param scale:
     :param bitlen:
     :param local_transfer:
@@ -171,7 +196,7 @@ def keygenCorrelatedDPF(party: TrustedDealer, bitlen=repr_config.bitlen, scale=r
     mask = sampleGroupElements(bitlen, scale, seed)
     k0 = Correlated_DPFKey()
     k1 = Correlated_DPFKey()
-    _k0, _k1 = keygenDPF(x=r, party=party, sec_para=sec_para, filename=filename, local_transfer=False,
+    _k0, _k1 = keygenDPF(x=r, party=party, sec_para=sec_para, filename=filename, local_transfer=False, payload=payload,
                          DEBUG=DEBUG)
     k0.init_from_DPFKey(_k0)
     k1.init_from_DPFKey(_k1)
@@ -229,6 +254,7 @@ def evalRangeDPF(party: SemiHonestParty, x: (int, int), vector: TriFSSTensor,
                  bitlen=repr_config.bitlen, scale=repr_config.scalefactor,
                  key: Correlated_DPFKey = None,
                  include_right_bound=False,
+                 return_arithmetic=True,
                  filename=None,
                  enable_cache=False,
                  sec_para=config.sec_para,
@@ -236,6 +262,7 @@ def evalRangeDPF(party: SemiHonestParty, x: (int, int), vector: TriFSSTensor,
     """
     This function returns a range of DPF from [x_0,x_1) with single thread.
     We did not mark the time for this function currently as we assume that this will not be individually invoked.
+    :param return_arithmetic:
     :param scale:
     :param bitlen:
     :param vector:
@@ -256,19 +283,20 @@ def evalRangeDPF(party: SemiHonestParty, x: (int, int), vector: TriFSSTensor,
     for i in range(x[0], x[1]):
         this_x = GroupElements(value=None, repr_value=i, bitlen=bitlen, scale=scale)
         dpf_value = evalDPF(party=party, x=this_x, key=key, enable_cache=enable_cache,
-                            sec_para=sec_para, DEBUG=False, mark=False)
+                            sec_para=sec_para, DEBUG=False, mark=False, return_Arithmetic=return_arithmetic)
         vector[i] = dpf_value
         if DEBUG:
             print(f"\n[INFO] Calculation on {i} th position")
 
 
-def evalAllDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_DPFKey = None, filename=None,
+def evalAllDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_DPFKey = None, return_arithmetic=True,
+               filename=None,
                enable_cache=False, thread=config.full_domain_eval_thread, sec_para=config.sec_para,
                DEBUG=config.DEBUG):
     """
     This function evaluates all the nodes within the input domain.
     returns the bool value tensor
-    # TODO: Add correlated DPF for evalAll, when invoking the function, not inside the function
+    :param return_arithmetic:
     :param party:
     :param x: The very value of this var is useless, we only use it to specify the group information.
     :param key:
@@ -294,7 +322,9 @@ def evalAllDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_DPFKey 
     for i in range(thread):
         new_thread = TriFSSThread(func=evalRangeDPF, args=[party, (segmentation[i], segmentation[i + 1]), result_tensor,
                                                            x.bitlen, x.scalefactor,
-                                                           key, int(i == (thread - 1)), None, enable_cache, sec_para,
+                                                           key, int(i == (thread - 1)), return_arithmetic, None,
+                                                           enable_cache,
+                                                           sec_para,
                                                            DEBUG])
         party.add_thread(new_thread)
     party.start_all_thread()

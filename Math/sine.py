@@ -51,9 +51,11 @@ def sin_offline(party: TrustedDealer, bitlen=repr_config.bitlen, scale=repr_conf
 
     # For EvalAll, we need one DPF Key.
     # Here we need an extra B2A.
-    file_dict['DPF'] = keygenCorrelatedDPF(party=party, bitlen=scale, scale=scale, local_transfer=True)
-    file_dict['DPF_B2A'] = generate_massive_cross_term_triplet(number=(2 ** scale), party=party,
-                                                               bitlen=bitlen, scale=scale, local_transfer=True)
+    file_dict['DPF'] = keygenCorrelatedDPF(party=party, bitlen=scale, scale=scale,
+                                           local_transfer=True,
+                                           payload=GroupElements(value=1, bitlen=bitlen, scale=scale))
+    # file_dict['DPF_B2A'] = generate_massive_cross_term_triplet(number=(2 ** scale), party=party,
+    #                                                            bitlen=bitlen, scale=scale, local_transfer=True)
     party.send(file_dict, f'sine_file_dict_{bitlen}_{scale}.dict')
     party.eliminate_start_marker(func='sin', func_type='offline')
 
@@ -106,15 +108,16 @@ def sin(x: GroupElements, party: SemiHonestParty, file_dict: str = None, is_leaf
     # Results Retrieval
     new_x = clear_bits_removal(new_x, 2)
     dpf_vector = evalAllDPF(party=party, x=GroupElements(value=0, bitlen=x_.scalefactor),
-                            filename=file_dict['DPF'][party.party_id], enable_cache=True)
-    Arithmetic_DPF = tensor_like_B2A(x=dpf_vector, triplet=file_dict['DPF_B2A'][party.party_id], party=party,
-                                     bitlen=x.bitlen, scale=x.scalefactor)
-    Arithmetic_DPF.update_to_thread_tensor(party=party)
+                            filename=file_dict['DPF'][party.party_id], enable_cache=True, return_arithmetic=True)
+    # Arithmetic_DPF = tensor_like_B2A(x=dpf_vector, triplet=file_dict['DPF_B2A'][party.party_id], party=party,
+    #                                  bitlen=x.bitlen, scale=x.scalefactor)
+    # Arithmetic_DPF.update_to_thread_tensor(party=party)
+    dpf_vector.update_to_thread_tensor(party=party)
     r: GroupElements = party.local_recv(file_dict['DPF'][party.party_id]).r
     party.send(r - new_x)  # Reconstruct r-x
     recv: GroupElements = party.recv()
     offset = recv + r - new_x
-    shifted = Arithmetic_DPF.vector_left_shift(offset=offset)
+    shifted = dpf_vector.vector_left_shift(offset=offset)
     sin_value = party.local_recv(filename=file_dict['sin_val'])
     result_vector = shifted * sin_value
     final = result_vector.get_all_added()

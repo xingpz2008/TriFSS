@@ -42,7 +42,7 @@ class TriFSSTensor(object):
                 new_tensor = self.__elementwise_mul_with_thread(new_other)
         else:
             for i in range(self.__length):
-                if type(other) == TriFSSTensor:
+                if type(other) in [TriFSSTensor, LookUpTable]:
                     assert (self.__length == other.__get_len__()), 'Only the same length can be applied when ' \
                                                                    'tensor * ' \
                                                                    'tensor '
