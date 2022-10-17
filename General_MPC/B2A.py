@@ -243,7 +243,6 @@ def tensor_like_B2A(x: Union[List, TriFSSTensor],
     party.empty_thread_pool()
     # Then, we re-construct the multi_res
     if party.party_id == 0:
-        # TODO: Fix here
         mult_res_vector = recv_tensor * x_in_group + triplet_pack.ab_b_tensor
     else:
         mult_res_vector = recv_tensor * triplet_pack.a_tensor + triplet_pack.ab_b_tensor

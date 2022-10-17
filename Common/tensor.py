@@ -1,3 +1,5 @@
+from typing import Union
+
 from Pythonic_TriFSS.Common.group_elements import GroupElements
 import Pythonic_TriFSS.Configs.general_mpc as mpc_config
 from Pythonic_TriFSS.Utils.thread_tool import get_loc_list
@@ -24,11 +26,11 @@ class TriFSSTensor(object):
             self.thread = 1
 
     def __mul__(self, other):
-        assert (type(other) in [TriFSSTensor, int, float, GroupElements, LUT.LookUpTable]), 'Unsupported type for tensor ' \
-                                                                             'multiplication. '
+        assert (type(other) in [TriFSSTensor, int, float, GroupElements, LookUpTable]), 'Unsupported type for tensor ' \
+                                                                                        'multiplication. '
         new_tensor = TriFSSTensor()
         if self.thread > 1:
-            if type(other) in [TriFSSTensor, LUT.LookUpTable]:
+            if type(other) in [TriFSSTensor, LookUpTable]:
                 new_tensor = self.__elementwise_mul_with_thread(other)
             elif type(other) in [int, float]:
                 new_other = TriFSSTensor([GroupElements(value=other,
@@ -51,11 +53,11 @@ class TriFSSTensor(object):
         return new_tensor
 
     def __sub__(self, other):
-        assert (type(other) in [TriFSSTensor, int, float, GroupElements, LUT.LookUpTable]), \
+        assert (type(other) in [TriFSSTensor, int, float, GroupElements, LookUpTable]), \
             'Unsupported type for tensor subtraction.'
         new_tensor = TriFSSTensor()
         if self.thread > 1:
-            if type(other) in [TriFSSTensor, LUT.LookUpTable]:
+            if type(other) in [TriFSSTensor, LookUpTable]:
                 new_tensor = self.__elementwise_sub_with_thread(other)
             elif type(other) in [int, float]:
                 new_other = TriFSSTensor([GroupElements(value=other,
@@ -94,11 +96,11 @@ class TriFSSTensor(object):
         return TriFSSTensor(self.val_list + other.val_list)
 
     def __add__(self, other):
-        assert (type(other) in [TriFSSTensor, int, float, GroupElements, LUT.LookUpTable]), \
+        assert (type(other) in [TriFSSTensor, int, float, GroupElements, LookUpTable]), \
             'Unsupported type for tensor addition.'
         new_tensor = TriFSSTensor()
         if self.thread > 1:
-            if type(other) in [TriFSSTensor, LUT.LookUpTable]:
+            if type(other) in [TriFSSTensor, LookUpTable]:
                 new_tensor = self.__elementwise_add_with_thread(other)
             elif type(other) in [int, float]:
                 new_other = TriFSSTensor([GroupElements(value=other,
@@ -171,6 +173,7 @@ class TriFSSTensor(object):
         def __range__mult(interval: [int, int], include_right=False):
             for j in range(interval[0], interval[1] + int(include_right)):
                 result_tensor[j] = self[j] * other[j]
+
         if (len(segmentation) - 1) < self.thread:
             real_thread = len(segmentation) - 1
         else:
@@ -192,6 +195,7 @@ class TriFSSTensor(object):
         def __range__add(interval: [int, int], include_right=False):
             for j in range(interval[0], interval[1] + int(include_right)):
                 result_tensor[j] = self[j] + other[j]
+
         if (len(segmentation) - 1) < self.thread:
             real_thread = len(segmentation) - 1
         else:
@@ -213,6 +217,7 @@ class TriFSSTensor(object):
         def __range__sub(interval: [int, int], include_right=False):
             for j in range(interval[0], interval[1] + int(include_right)):
                 result_tensor[j] = self[j] - other[j]
+
         if (len(segmentation) - 1) < self.thread:
             real_thread = len(segmentation) - 1
         else:
@@ -225,6 +230,14 @@ class TriFSSTensor(object):
         self.party.empty_thread_pool()
         return result_tensor
 
+    def vector_left_shift(self, offset: Union[int, GroupElements]):
+        if type(offset) is GroupElements:
+            offset = offset.value
+        new_tensor = TriFSSTensor([None] * self.__length)
+        for i in range(self.__length):
+            new_tensor[i] = self[(i + offset) % self.__length]
+        return new_tensor
+
     def update_to_thread_tensor(self, party, thread=mpc_config.default_thread):
         self.party = party
         self.thread = thread
@@ -232,6 +245,7 @@ class TriFSSTensor(object):
     def downgrade_to_non_thread_tensor(self):
         self.party = None
         self.thread = 1
+
 
 class LookUpTable(TriFSSTensor):
     def __init__(self, var_list=[], key_list=[]):

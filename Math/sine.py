@@ -36,8 +36,7 @@ def sin_offline(party: TrustedDealer, bitlen=repr_config.bitlen, scale=repr_conf
     # For Containment pack, we need containment offline
     knots_list = TriFSSTensor([GroupElements(0, bitlen=(2 + scale)), GroupElements(0.5, bitlen=(2 + scale)),
                                GroupElements(1.0, bitlen=(2 + scale)), GroupElements(1.5, bitlen=(2 + scale)),
-                               GroupElements(1.999999, bitlen=(2 + scale))])
-    # TODO: Check here
+                               GroupElements((2 - (1 / (2 ** scale))), bitlen=(2 + scale))])
     # Here we need an extra B2A
     file_dict['Ctn'] = Containment_Offline(party=party, knots_list=knots_list, local_transfer=True, unsigned=True)
     file_dict['Ctn_B2A_a'] = generate_massive_cross_term_triplet(number=4, party=party,
@@ -111,13 +110,14 @@ def sin(x: GroupElements, party: SemiHonestParty, file_dict: str = None, is_leaf
     Arithmetic_DPF = tensor_like_B2A(x=dpf_vector, triplet=file_dict['DPF_B2A'][party.party_id], party=party,
                                      bitlen=x.bitlen, scale=x.scalefactor)
     Arithmetic_DPF.update_to_thread_tensor(party=party)
-    sin_value = party.local_recv(filename=file_dict['sin_val'])
-    result_vector = Arithmetic_DPF * sin_value
-    r = party.local_recv(file_dict['DPF'][party.party_id]).r
-    party.send(new_x - r)  # Reconstruct x-r
+    r: GroupElements = party.local_recv(file_dict['DPF'][party.party_id]).r
+    party.send(r - new_x)  # Reconstruct r-x
     recv: GroupElements = party.recv()
+    offset = recv + r - new_x
+    shifted = Arithmetic_DPF.vector_left_shift(offset=offset)
+    sin_value = party.local_recv(filename=file_dict['sin_val'])
+    result_vector = shifted * sin_value
     final = result_vector.get_all_added()
     final = coefficients_a * final
-    # TODO: Add vector shift
     party.eliminate_start_marker(func='sin')
     return final
