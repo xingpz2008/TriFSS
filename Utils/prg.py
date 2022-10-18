@@ -13,7 +13,7 @@ def prg(seed: int, sec_para=sec_para, func_type=None, party=None, extra_m=None):
     if func_type == 'DPF':
         return random.getrandbits(2 * sec_para + 2)
     if func_type == 'DCF':
-        return random.getrandbits(2 * sec_para + 2)
+        return random.getrandbits(2 * sec_para + 4)
     if func_type == 'Convert_G':
         return random.getrandbits(sec_para + extra_m)
     else:
