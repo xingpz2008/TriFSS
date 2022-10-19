@@ -12,3 +12,10 @@ class BeaverTriplets(object):
         self.a = a
         self.b = b
         self.ab_b = ab_b
+
+
+class BooleanMultTriplets(object):
+    def __init__(self, a: int, b: int, ab_b: int):
+        self.a = a
+        self.b = b
+        self.ab_b = ab_b

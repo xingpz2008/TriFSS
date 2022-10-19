@@ -180,6 +180,7 @@ def keygenCorrelatedDPF(party: TrustedDealer, bitlen=repr_config.bitlen, scale=r
     """
     This function returns the correlated DPF keys. The insight is that, we produce DPF at the random place from group,
     then construct delta and sending to each other.
+    [DEV WARNING] THIS FUNCTION CAN BE USED ONLY FOR EVALALL.
     :param payload:
     :param scale:
     :param bitlen:
@@ -216,11 +217,57 @@ def keygenCorrelatedDPF(party: TrustedDealer, bitlen=repr_config.bitlen, scale=r
     return k0, k1
 
 
-def evalCorrelatedDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_DPFKey = None, filename=None,
-                      sec_para=config.sec_para, DEBUG=config.DEBUG):
+def keygenCorrelatedConstantDPF(c: GroupElements, party: TrustedDealer, bitlen=repr_config.bitlen,
+                                scale=repr_config.scalefactor,
+                                sec_para=config.sec_para, filename=None,
+                                payload: Union[None, GroupElements] = None,
+                                local_transfer=True, seed=config.seed, DEBUG=config.DEBUG) -> tuple:
+    """
+    This function returns the correlated DPF keys. The insight is that, we produce DPF at the random place from group,
+    then construct delta and sending to each other.
+    :param c: Constant, that we eval on if x==c.
+    :param payload:
+    :param scale:
+    :param bitlen:
+    :param local_transfer:
+    :param seed:
+    :param party:
+    :param sec_para:
+    :param filename:
+    :param DEBUG:
+    :return:
+    """
+    party.set_start_marker('keygenCorrelatedDPF', 'offline')
+    r = sampleGroupElements(bitlen, scale, seed)
+    mask = sampleGroupElements(bitlen, scale, seed)
+    k0 = Correlated_DPFKey()
+    k1 = Correlated_DPFKey()
+    _k0, _k1 = keygenDPF(x=(c+r), party=party, sec_para=sec_para, filename=filename,
+                         local_transfer=False, payload=payload,
+                         DEBUG=DEBUG)
+    k0.init_from_DPFKey(_k0)
+    k1.init_from_DPFKey(_k1)
+    del _k0, _k1
+    k0.r = (r - mask)
+    k1.r = mask
+    if local_transfer:
+        if filename is None:
+            filename_0 = f'rcDPF_{bitlen}_{scale}_0.key'
+            filename_1 = f'rcDPF_{bitlen}_{scale}_1.key'
+            filename = [filename_0, filename_1]
+        party.send(k0, filename[0])
+        party.send(k1, filename[1])
+        party.eliminate_start_marker('keygenCorrelatedDPF', 'offline')
+        return filename
+    party.eliminate_start_marker('keygenCorrelatedDPF', 'offline')
+    return k0, k1
+
+
+def evalCorrelatedConstantDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_DPFKey = None, filename=None,
+                              return_Arithmetic=True, sec_para=config.sec_para, DEBUG=config.DEBUG):
     """
     This function evaluates DPF from a random place r and then reconstruct the to result the correct one.
-    # TODO: Consider how to fix
+    :param return_Arithmetic:
     :param party:
     :param x:
     :param key:
@@ -229,7 +276,6 @@ def evalCorrelatedDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_
     :param DEBUG:
     :return:
     """
-    raise NotImplementedError('This function is deprecated and should not be called at this moment!')
     party.set_start_marker(func='evalCorrelatedDPF')
     if filename is None:
         assert (key is not None), "We need at least key or keyfile to continue."
@@ -245,7 +291,8 @@ def evalCorrelatedDPF(party: SemiHonestParty, x: GroupElements, key: Correlated_
         print(f'x+r+recv = {reconstructed_x.value}')
         print('==========DEBUG @ evalCorrDPF END==========')
     del new_x
-    result = evalDPF(party=party, x=reconstructed_x, key=key, sec_para=sec_para, DEBUG=DEBUG)
+    result = evalDPF(party=party, x=reconstructed_x, key=key, sec_para=sec_para,
+                     DEBUG=DEBUG, return_Arithmetic=return_Arithmetic)
     party.eliminate_start_marker(func='evalCorrelatedDPF')
     return result
 
