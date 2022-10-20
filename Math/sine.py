@@ -10,13 +10,18 @@ from Pythonic_TriFSS.Common.tensor import TriFSSTensor
 from Pythonic_TriFSS.FSS.dpf import keygenCorrelatedDPF, evalAllDPF
 from Pythonic_TriFSS.Cleartext.cleartext_lib import clear_bits_removal
 from Pythonic_TriFSS.General_MPC.B2A import generate_massive_cross_term_triplet, tensor_like_B2A
+from Pythonic_TriFSS.General_MPC.Decompose import digit_decomposition, digit_decomposition_offline
+from Pythonic_TriFSS.General_MPC.Arithmetic import arithmetic_mul, arithmetic_mul_offline
 
 
 # TODO: Add trigonometric
 
-def sin_offline(party: TrustedDealer, bitlen=repr_config.bitlen, scale=repr_config.scalefactor):
+def sin_offline(party: TrustedDealer, bitlen=repr_config.bitlen,
+                scale=repr_config.scalefactor, segNum=config.default_segmentation):
     """
     This function generates offline assistance data for sine function
+    # TODO: Consider sine pack instead of multiple files.
+    :param segNum:
     :param scale:
     :param bitlen:
     :param party:
@@ -24,8 +29,13 @@ def sin_offline(party: TrustedDealer, bitlen=repr_config.bitlen, scale=repr_conf
     """
     # We first construct database, which should not be included in time statistics.
     file_dict = dict()
-    file_dict['sin_val'] = sin_val(save=True, key_bitlen=scale, key_scale=scale)
     file_dict['sin_coefficient'] = sin_coefficients(save=True)
+    if not segNum > 1:
+        file_dict['sin_val'] = sin_val(save=True, key_bitlen=scale, key_scale=scale)
+    else:
+        for i in range(segNum):
+            file_dict[f'sin_val_{i}'] = sin_val(save=True, key_bitlen=int(bitlen / segNum), key_scale=scale,
+                                                segSeq=i, segLen=int(bitlen / segNum))
 
     # Now start with the real offline.
     party.set_start_marker(func='sin', func_type='offline')
@@ -51,19 +61,37 @@ def sin_offline(party: TrustedDealer, bitlen=repr_config.bitlen, scale=repr_conf
 
     # For EvalAll, we need one DPF Key.
     # Here we need an extra B2A.
-    file_dict['DPF'] = keygenCorrelatedDPF(party=party, bitlen=scale, scale=scale,
-                                           local_transfer=True,
-                                           payload=GroupElements(value=1, bitlen=bitlen, scale=scale))
-    # file_dict['DPF_B2A'] = generate_massive_cross_term_triplet(number=(2 ** scale), party=party,
-    #                                                            bitlen=bitlen, scale=scale, local_transfer=True)
+    if not segNum > 1:
+        file_dict['DPF'] = keygenCorrelatedDPF(party=party, bitlen=scale, scale=scale,
+                                               local_transfer=True,
+                                               payload=GroupElements(value=1, bitlen=bitlen, scale=scale))
+    else:
+        # Now we consider situation with digit decompose
+        file_dict['DigDec'] = digit_decomposition_offline(party=party, segLen=int(scale / segNum),
+                                                          global_bitlen=bitlen, global_scale=scale,
+                                                          local_transfer=True)
+
+        # Then we need 2 * (segNum - 1) DPF
+        for i in range(2 * (segNum - 1)):
+            file_dict[f'DPF_{i}'] = keygenCorrelatedDPF(party=party, bitlen=int(scale / segNum),
+                                                        scale=scale, local_transfer=True,
+                                                        payload=GroupElements(value=1, bitlen=bitlen, scale=scale))
+
+        # After constructing DPF, we need 2 * (segNum - 1) Mult for arithmetic sharing
+        for i in range(2 * (segNum - 1)):
+            file_dict[f'A_Mul_{i}'] = arithmetic_mul_offline(party=party, bitlen=bitlen,
+                                                             scale=scale, local_transfer=True)
     party.send(file_dict, f'sine_file_dict_{bitlen}_{scale}.dict')
     party.eliminate_start_marker(func='sin', func_type='offline')
 
 
-def sin(x: GroupElements, party: SemiHonestParty, file_dict: str = None, is_leaf_func=False, DEBUG=config.DEBUG):
+def sin(x: GroupElements, party: SemiHonestParty, file_dict: str = None, segNum=config.default_segmentation,
+        is_leaf_func=False, DEBUG=config.DEBUG):
     """
     # TODO: Verify Correctness
+    # TODO: Consider multiple (>2) segmentation
     This function returns sin(pi*x)
+    :param segNum:
     :param file_dict:
     :param DEBUG:
     :param x:
@@ -72,6 +100,7 @@ def sin(x: GroupElements, party: SemiHonestParty, file_dict: str = None, is_leaf
            moment.
     :return:
     """
+    assert (segNum < 2), 'Currently we only support segNum < 2'
     party.set_start_marker(func='sin')
     if file_dict is None:
         file_dict: dict = party.local_recv(f'sine_file_dict_{x.bitlen}_{x.scalefactor}.dict')
@@ -107,20 +136,56 @@ def sin(x: GroupElements, party: SemiHonestParty, file_dict: str = None, is_leaf
 
     # Results Retrieval
     new_x = clear_bits_removal(new_x, 2)
-    dpf_vector = evalAllDPF(party=party, x=GroupElements(value=0, bitlen=x_.scalefactor),
-                            filename=file_dict['DPF'][party.party_id], enable_cache=True, return_arithmetic=True)
-    # Arithmetic_DPF = tensor_like_B2A(x=dpf_vector, triplet=file_dict['DPF_B2A'][party.party_id], party=party,
-    #                                  bitlen=x.bitlen, scale=x.scalefactor)
-    # Arithmetic_DPF.update_to_thread_tensor(party=party)
-    dpf_vector.update_to_thread_tensor(party=party)
-    r: GroupElements = party.local_recv(file_dict['DPF'][party.party_id]).r
-    party.send(r - new_x)  # Reconstruct r-x
-    recv: GroupElements = party.recv()
-    offset = recv + r - new_x
-    shifted = dpf_vector.vector_left_shift(offset=offset)
-    sin_value = party.local_recv(filename=file_dict['sin_val'])
-    result_vector = shifted * sin_value
-    final = result_vector.get_all_added()
-    final = coefficients_a * final
-    party.eliminate_start_marker(func='sin')
-    return final
+    if not segNum > 1:
+        dpf_vector = evalAllDPF(party=party, x=GroupElements(value=0, bitlen=x_.scalefactor),
+                                filename=file_dict['DPF'][party.party_id], enable_cache=True, return_arithmetic=True)
+        dpf_vector.update_to_thread_tensor(party=party)
+        r: GroupElements = party.local_recv(file_dict['DPF'][party.party_id]).r
+        party.send(r - new_x)  # Reconstruct r-x
+        recv: GroupElements = party.recv()
+        offset = recv + r - new_x
+        shifted = dpf_vector.vector_left_shift(offset=offset)
+        sin_value = party.local_recv(filename=file_dict['sin_val'])
+        result_vector = shifted * sin_value
+        final = result_vector.get_all_added()
+        final = coefficients_a * final
+        party.eliminate_start_marker(func='sin')
+        return final
+    else:
+        assert (x.scalefactor % segNum == 0), 'Unsupported scale for Digit Decomposition!'
+        decomposed_x = digit_decomposition(x=new_x, segLen=int(new_x.bitlen / segNum),
+                                           party=party, offline_data=file_dict['DigDec'][party.party_id])
+        dpf_vector_list = []
+        for i in range(2 * (segNum - 1)):
+            # In this iteration, we evaluate and shift DPF on two value, high position x and low position x.
+            dpf_vector = evalAllDPF(party=party, x=GroupElements(value=0, bitlen=decomposed_x[i].bitlen),
+                                    filename=file_dict[f'DPF_{i}'][party.party_id], enable_cache=True,
+                                    return_arithmetic=True)
+            dpf_vector.update_to_thread_tensor(party=party)
+            r: GroupElements = party.local_recv(file_dict[f'DPF_{i}'][party.party_id]).r
+            party.send(r - decomposed_x[i])
+            recv: GroupElements = party.recv()
+            offset = recv + r - decomposed_x[i]
+            shifted = dpf_vector.vector_left_shift(offset=offset)
+            dpf_vector_list.append(shifted)
+        # Then we use the two vector to calculate.
+        # For sine, the equation holds:
+        # sin(x+y) = 0 sin(x) 2 cos(y)+1 cos(x) 3 sin(y)
+        # Digit Array [0] indicates the data of lower position
+        result_list = []
+        for i in range(2 * (segNum - 1)):
+            sin_value = party.local_recv(filename=file_dict[f'sin_val_{i}'])
+            # TODO: Modify here!
+            cos_value = sin_value
+            sin_result_vector = dpf_vector_list[i] * sin_value
+            cos_result_vector = dpf_vector_list[i] * cos_value
+            result_list.append(sin_result_vector.get_all_added())
+            result_list.append(cos_result_vector.get_all_added())
+        final = GroupElements(0)
+        front_result = arithmetic_mul(x=result_list[0], y=result_list[2],
+                                      party=party, offline_data=file_dict[f'A_Mul_{0}'])
+        back_result = arithmetic_mul(x=result_list[1], y=result_list[3],
+                                     party=party, offline_data=file_dict[f'A_Mul_{1}'])
+        final = front_result + back_result
+        party.eliminate_start_marker(func='sin')
+        return final

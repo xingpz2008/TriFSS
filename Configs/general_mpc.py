@@ -1,2 +1,2 @@
 DEBUG = False
-default_thread = 6
+default_thread = 2

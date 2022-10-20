@@ -46,3 +46,8 @@ class digit_decompose_pack(object):
         self.wrap_and_all1s_pack = None
         self.boolean_AND_pack_list = []
         self.B2A_triplet_list = []
+
+
+class arithmetic_mult_pack(object):
+    def __init__(self):
+        self.triplet = None

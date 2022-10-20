@@ -52,7 +52,8 @@ def generate_cross_term_triplet(bitlen=repr_config.bitlen,
                 filename = [filename_0, filename_1]
             executor.send(data=CrossTermTriplets(a, z), name=filename[0])
             executor.send(data=CrossTermTriplets(b, r), name=filename[1])
-            executor.eliminate_start_marker('B2A', 'offline')
+            if mark:
+                executor.eliminate_start_marker('B2A', 'offline')
             return filename
     if mark:
         executor.eliminate_start_marker('B2A', 'offline')
