@@ -87,7 +87,7 @@ def arithmetic_mul(x: GroupElements, y: GroupElements,
     recv_e, recv_f = recv[0], recv[1]
     e = e + recv_e
     f = f + recv_f
-    z = (party.party_id * e * f) + (f * offline_data.triplet.a) + \
+    z = (e * f * party.party_id) + (f * offline_data.triplet.a) + \
         (e * offline_data.triplet.b) + offline_data.triplet.ab_b
     party.eliminate_start_marker(func='Mult')
     return z

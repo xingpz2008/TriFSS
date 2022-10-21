@@ -76,7 +76,7 @@ def sin_val(save: False, filename=None,
         if segSeq is None:
             real_this_x = this_x
         else:
-            real_this_x = this_x << (segSeq * segLen)
+            real_this_x = this_x * (2 ** (segSeq * segLen))
         val = math.sin(real_this_x * math.pi)
         lut_.add_elements(x=GroupElements(value=val, bitlen=value_bitlen, scale=value_scale, DEBUG=True),
                           k=GroupElements(value=this_x, bitlen=key_bitlen, scale=key_scale, DEBUG=True))

@@ -34,8 +34,8 @@ def sin_offline(party: TrustedDealer, bitlen=repr_config.bitlen,
         file_dict['sin_val'] = sin_val(save=True, key_bitlen=scale, key_scale=scale)
     else:
         for i in range(segNum):
-            file_dict[f'sin_val_{i}'] = sin_val(save=True, key_bitlen=int(bitlen / segNum), key_scale=scale,
-                                                segSeq=i, segLen=int(bitlen / segNum))
+            file_dict[f'sin_val_{i}'] = sin_val(save=True, key_bitlen=int(scale / segNum), key_scale=scale,
+                                                segSeq=i, segLen=int(scale / segNum))
 
     # Now start with the real offline.
     party.set_start_marker(func='sin', func_type='offline')
@@ -68,7 +68,7 @@ def sin_offline(party: TrustedDealer, bitlen=repr_config.bitlen,
     else:
         # Now we consider situation with digit decompose
         file_dict['DigDec'] = digit_decomposition_offline(party=party, segLen=int(scale / segNum),
-                                                          global_bitlen=bitlen, global_scale=scale,
+                                                          global_bitlen=scale, global_scale=scale,
                                                           local_transfer=True)
 
         # Then we need 2 * (segNum - 1) DPF
@@ -100,7 +100,7 @@ def sin(x: GroupElements, party: SemiHonestParty, file_dict: str = None, segNum=
            moment.
     :return:
     """
-    assert (segNum < 2), 'Currently we only support segNum < 2'
+    assert (segNum < 3), 'Currently we only support segNum < 3'
     party.set_start_marker(func='sin')
     if file_dict is None:
         file_dict: dict = party.local_recv(f'sine_file_dict_{x.bitlen}_{x.scalefactor}.dict')
@@ -183,9 +183,9 @@ def sin(x: GroupElements, party: SemiHonestParty, file_dict: str = None, segNum=
             result_list.append(cos_result_vector.get_all_added())
         final = GroupElements(0)
         front_result = arithmetic_mul(x=result_list[0], y=result_list[2],
-                                      party=party, offline_data=file_dict[f'A_Mul_{0}'])
+                                      party=party, offline_data=file_dict[f'A_Mul_{0}'][party.party_id])
         back_result = arithmetic_mul(x=result_list[1], y=result_list[3],
-                                     party=party, offline_data=file_dict[f'A_Mul_{1}'])
+                                     party=party, offline_data=file_dict[f'A_Mul_{1}'][party.party_id])
         final = front_result + back_result
         party.eliminate_start_marker(func='sin')
         return final
