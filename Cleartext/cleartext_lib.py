@@ -31,7 +31,7 @@ def clear_mod(x: GroupElements, N: Union[int, GroupElements], unsigned=False) ->
         if type(N) is int:
             N = GroupElements(N, bitlen=x.bitlen, scale=x.scalefactor)
         for i in range(x.bitlen):
-            if x[x.bitlen-1-i] > N[x.bitlen-1-i]:
+            if x[x.bitlen - 1 - i] > N[x.bitlen - 1 - i]:
                 sign = True
                 break
     else:
@@ -64,7 +64,7 @@ def clear_dpf_all(x: GroupElements, domain: float) -> Tensor.TriFSSTensor:
     :return:
     """
     entries = 2 ** x.bitlen
-    resolution = 1 / (2**x.scalefactor)
+    resolution = 1 / (2 ** x.scalefactor)
     vector = Tensor.TriFSSTensor()
     for i in range(entries):
         this_val = i * resolution
@@ -74,3 +74,21 @@ def clear_dpf_all(x: GroupElements, domain: float) -> Tensor.TriFSSTensor:
         else:
             vector.add_elements(0)
     return vector
+
+
+def clear_digit_decompose(x: GroupElements, segNum: int):
+    """
+    This function returns digit decomposition of x
+    :param x:
+    :param segNum:
+    :return:
+    """
+    assert (x.bitlen % segNum == 0), 'Currently we only support segNum is a divisor of bit length'
+    segLen = int(x.bitlen / segNum)
+    segmentation = []
+    for i in range(segNum):
+        segmentation.append(GroupElements(value=None,
+                                          repr_value=(x.value >> (i * segLen) & ((2 ** segLen) - 1)),
+                                          bitlen=segLen,
+                                          scale=x.scalefactor))
+    return segmentation

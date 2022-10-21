@@ -3,6 +3,7 @@ import Pythonic_TriFSS.Cleartext.cleartext_lib as lib
 from Pythonic_TriFSS.Common.tensor import LookUpTable
 import Pythonic_TriFSS.Communication.api as api
 import Pythonic_TriFSS.Configs.fixed_point_repr as repr_config
+import Pythonic_TriFSS.Configs.math as math_config
 
 
 # TODO: Add tangent
