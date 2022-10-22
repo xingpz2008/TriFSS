@@ -55,9 +55,6 @@ def sin_offline(party: TrustedDealer, bitlen=repr_config.bitlen,
     file_dict['Ctn_B2A_b'] = generate_massive_cross_term_triplet(number=4, party=party,
                                                                  bitlen=2 + scale, scale=scale,
                                                                  local_transfer=True)
-    file_dict['Ctn_B2A_c'] = generate_massive_cross_term_triplet(number=4, party=party,
-                                                                 bitlen=2 + scale, scale=scale,
-                                                                 local_transfer=True)
 
     # For EvalAll, we need one DPF Key.
     # Here we need an extra B2A.
@@ -120,8 +117,7 @@ def sin(x: GroupElements, party: SemiHonestParty, file_dict: str = None, segNum=
                                        bitlen=x.bitlen, scale=x.scalefactor)
     Arithmetic_Ctn_b = tensor_like_B2A(x=Ctn_res, triplet=file_dict['Ctn_B2A_b'][party.party_id], party=party,
                                        bitlen=2 + x_.scalefactor, scale=x_.scalefactor)
-    Arithmetic_Ctn_c = tensor_like_B2A(x=Ctn_res, triplet=file_dict['Ctn_B2A_c'][party.party_id], party=party,
-                                       bitlen=2 + x_.scalefactor, scale=x_.scalefactor)
+    Arithmetic_Ctn_c = Arithmetic_Ctn_b
     Arithmetic_Ctn_a.downgrade_to_non_thread_tensor()
     Arithmetic_Ctn_b.downgrade_to_non_thread_tensor()
     Arithmetic_Ctn_c.downgrade_to_non_thread_tensor()
