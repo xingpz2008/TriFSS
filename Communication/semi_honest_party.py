@@ -21,8 +21,8 @@ class SemiHonestParty(object):
         self.DPF_Dict = dict()
 
     def send(self, data):
-        api.send(self.partner_addr, self.partner_recv_port, data, self.LOG)
-        self.statistic_pack.add_send(get_data_size(data))
+        size = api.send(self.partner_addr, self.partner_recv_port, data, self.LOG)
+        self.statistic_pack.add_send(size)
 
     def recv(self):
         data = api.recv(self.recv_socket, self.recv_port, self.LOG)

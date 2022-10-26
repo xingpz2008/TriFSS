@@ -69,8 +69,7 @@ class statistic_pack(object):
               ' by calling <party>.set_start_maker() & <party>.eliminate_start_maker() at target function!')
         print(f'Total Offline Time (Unreliable) = {self.__offline_time} s')
         print(f'Total Online Time (Unreliable) = {self.__online_time} s')
-        print(f'Bytes Sent = {self.__send_bytes}')
-        print(f'Bytes Received = {self.__recv_bytes}')
+        print(f'Bytes Transferred = {self.__send_bytes}')
         print(f'PRG Invocations = {self.__prg_invocations}')
         print(f'I/O = {self.__io}')
         if len(self.__online_func_time_table) != 0:

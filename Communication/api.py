@@ -3,6 +3,7 @@ from socket import *
 import pickle
 import Pythonic_TriFSS.Configs.communication as config
 import time
+from Pythonic_TriFSS.Utils.statistics import get_data_size
 
 
 def send(addr, port, data, LOG=config.LOG):
@@ -22,10 +23,12 @@ def send(addr, port, data, LOG=config.LOG):
         break
     if LOG:
         print(f"[INFO] Connection Established with {addr}:{port}")
-    s.sendall(pickle.dumps(data))
+    data = pickle.dumps(data)
+    s.sendall(data)
     if LOG:
         print(f"[INFO] Data Sent to {addr}:{port}")
     s.close()
+    return get_data_size(data)
 
 
 def _recv(buffer, comm):
