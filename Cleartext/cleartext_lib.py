@@ -34,6 +34,9 @@ def clear_mod(x: GroupElements, N: Union[int, GroupElements], unsigned=False) ->
             if x[x.bitlen - 1 - i] > N[x.bitlen - 1 - i]:
                 sign = True
                 break
+            elif x[x.bitlen - 1 - i] < N[x.bitlen - 1 - i]:
+                sign = False
+                break
     else:
         sign = not (x < N)
     result = x - (N * int(sign))
