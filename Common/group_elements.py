@@ -124,3 +124,6 @@ class GroupElements(object):
             if i == self.scalefactor - 1:
                 binary_string += '.'
         self.__binary__repr = binary_string[::-1]
+
+    def __get_binary_repr__(self):
+        return self.__binary__repr

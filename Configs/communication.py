@@ -9,3 +9,4 @@ recv_timeout_in_s = 0.3
 MAX_Connection_Time = 20
 connection_interval_in_s = 3
 default_filepath = '../Assets/'
+protocol = 0

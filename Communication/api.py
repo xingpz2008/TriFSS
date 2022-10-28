@@ -4,6 +4,51 @@ import pickle
 import Pythonic_TriFSS.Configs.communication as config
 import time
 from Pythonic_TriFSS.Utils.statistics import get_data_size
+from Pythonic_TriFSS.Common.group_elements import GroupElements
+
+
+def pack(data, protocol=config.protocol):
+    """
+    This function converts
+    :param data:
+    :param protocol:
+    :return:
+    """
+    if protocol == 0:
+        if type(data) is GroupElements:
+            # This is bitlen and scale
+            byte_data = b'GR'
+            byte_data = byte_data + (data.bitlen * (10 ** 2) +
+                                     data.scalefactor).to_bytes(2, 'big')
+            b_repr = data.value.to_bytes(int(data.bitlen / 2), 'big')
+            byte_data = byte_data + b_repr
+            return byte_data
+        else:
+            return pickle.dumps(data)
+    else:
+        return pickle.dumps(data)
+
+
+def unpack(data, protocol=config.protocol):
+    """
+    This function creates variable from data
+    :param data:
+    :param protocol:
+    :return:
+    """
+    if protocol == 0:
+        if data[:2] == b'GR':
+            front = data[2:4]
+            back = data[4:-1]
+            int_front = int().from_bytes(front, 'big')
+            bitlen = int(int_front / 100)
+            scale = int_front % 100
+            repr_value = int().from_bytes(back, 'big')
+            return GroupElements(value=None, repr_value=repr_value, bitlen=bitlen, scale=scale)
+        else:
+            return pickle.loads(data)
+    else:
+        return pickle.loads(data)
 
 
 def send(addr, port, data, LOG=config.LOG):
@@ -23,7 +68,7 @@ def send(addr, port, data, LOG=config.LOG):
         break
     if LOG:
         print(f"[INFO] Connection Established with {addr}:{port}")
-    data = pickle.dumps(data)
+    data = pack(data)
     s.sendall(data)
     if LOG:
         print(f"[INFO] Data Sent to {addr}:{port}")
@@ -45,11 +90,12 @@ def recv(s: socket, port, LOG=config.LOG):
             data += packet
         if packet is None or len(packet) < config.buffer:
             break
-    return pickle.loads(data)
+    return unpack(data)
 
 
 def listen(addr, port, LOG=config.LOG) -> socket:
     s = socket(AF_INET, SOCK_STREAM)
+    s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
     s.bind((addr, port))
     s.listen(config.MAX_LISTEN)
     if LOG:
