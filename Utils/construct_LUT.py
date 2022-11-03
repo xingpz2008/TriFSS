@@ -132,12 +132,15 @@ def cos_coefficients(save: False, filename=None, truncated_scale=2 + repr_config
 
 def cos_val(save: False, filename=None,
             key_bitlen=repr_config.bitlen, key_scale=repr_config.scalefactor,
-            value_bitlen=repr_config.bitlen, value_scale=repr_config.scalefactor) -> LookUpTable:
+            value_bitlen=repr_config.bitlen, value_scale=repr_config.scalefactor,
+            segSeq=None, segLen: int = 0) -> LookUpTable:
     """
-    This function generates cos value in Group elements
+    This function generates sin value in Group elements
     LUT Struct:
     val = GroupElements(f(x))
     key = x in real_value
+    :param segLen:
+    :param segSeq: Indicates the sequence of segmentation, None for disable segmentation
     :param value_scale:
     :param key_scale:
     :param key_bitlen:
@@ -151,13 +154,17 @@ def cos_val(save: False, filename=None,
     solution = 1 / (2 ** key_scale)
     for i in range(entries):
         this_x = i * solution
-        val = math.cos(this_x * math.pi)
-        lut_.add_elements(GroupElements(value=val, bitlen=value_bitlen, scale=value_scale),
-                          GroupElements(value=this_x, bitlen=value_bitlen, scale=value_scale))
+        if segSeq is None:
+            real_this_x = this_x
+        else:
+            real_this_x = this_x * (2 ** (segSeq * segLen))
+        val = math.cos(real_this_x * math.pi)
+        lut_.add_elements(x=GroupElements(value=val, bitlen=value_bitlen, scale=value_scale),
+                          k=GroupElements(value=this_x, bitlen=key_bitlen, scale=key_scale))
     if save:
         if filename is None:
             filename = communication_config.default_filepath + f'publicCos_' \
-                                                               f'{value_bitlen}_{value_scale}_None.lut'
+                                                               f'{value_bitlen}_{value_scale}_{segSeq}.lut'
         with open(filename, 'wb+') as f:
             pickle.dump(lut_, f)
         return filename

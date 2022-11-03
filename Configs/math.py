@@ -1,2 +1,2 @@
-DEBUG = True
+DEBUG = False
 default_segmentation = 1

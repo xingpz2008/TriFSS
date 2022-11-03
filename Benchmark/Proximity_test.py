@@ -39,6 +39,4 @@ def proximity_test(a: List, b: List):
 
 
 if __name__ == '__main__':
-    cos_val(save=True)
-    cos_coefficients(save=True)
-    proximity_test([4.33, 2.78], [0.12, 8.44])
+    proximity_test([4.52, 2.78], [0.53, 8.44])

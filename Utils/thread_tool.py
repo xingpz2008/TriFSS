@@ -1,5 +1,6 @@
 from math import ceil
 
+
 def get_loc_list(fullNum, threadNum):
     """
     This function returns the segmentation of multi thread task
@@ -18,4 +19,3 @@ def get_loc_list(fullNum, threadNum):
     if fullNum not in loc_list:
         loc_list.append(fullNum)
     return loc_list
-
