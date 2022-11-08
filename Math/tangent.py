@@ -91,6 +91,8 @@ def tan(x: GroupElements, party: SemiHonestParty, file_dict: str = None, segNum=
            moment.
     :return:
     """
+    party.send(1)
+    _ = party.recv()
     assert (segNum == 1), 'Segmentation is currently unavailable for tan!'
     party.set_start_marker(func='tan')
     if file_dict is None:
@@ -99,13 +101,20 @@ def tan(x: GroupElements, party: SemiHonestParty, file_dict: str = None, segNum=
         file_dict: dict = party.local_recv(filename=file_dict)
     sin_coefficient = party.local_recv(filename=file_dict['tan_coefficients'])
     # Range Reduction
+    party.set_start_marker(func='Stage1')
     x_ = clear_bits_removal(x, (x.bitlen - 1 - x.scalefactor))
+    party.eliminate_start_marker('Stage1')
+    party.get_performance_statics()
 
     # Period Reflection:
+    party.set_start_marker(func='Stage2')
     Moded_x = Mod(party=party, x=x_, N=GroupElements(1, bitlen=x_.bitlen, scale=x_.scalefactor),
                   offline_pack_file=file_dict['Mod'][party.party_id])
+    party.eliminate_start_marker('Stage2')
+    party.get_performance_statics()
 
     # Specialized Transformation
+    party.set_start_marker(func='Stage3')
     Ctn_res = Containment(party=party, x=Moded_x, offline_pack_file=file_dict['Ctn'][party.party_id])
     Arithmetic_Ctn_a = tensor_like_B2A(x=Ctn_res, triplet=file_dict['Ctn_B2A_a'][party.party_id], party=party,
                                        bitlen=x.bitlen, scale=x.scalefactor)
@@ -123,8 +132,11 @@ def tan(x: GroupElements, party: SemiHonestParty, file_dict: str = None, segNum=
         coefficients_b = coefficients_b + Arithmetic_Ctn_b[i] * sin_coefficient[i]['b']
         coefficients_c = coefficients_c + Arithmetic_Ctn_c[i] * sin_coefficient[i]['c']
     new_x = x_ * coefficients_b + coefficients_c
+    party.eliminate_start_marker('Stage3')
+    party.get_performance_statics()
 
     # Results Retrieval
+    party.set_start_marker('Stage4')
     new_x = clear_bits_removal(new_x, 1)
     if not segNum > 1:
         dpf_vector = evalAllDPF(party=party, x=GroupElements(value=0, bitlen=x_.scalefactor),
@@ -140,6 +152,7 @@ def tan(x: GroupElements, party: SemiHonestParty, file_dict: str = None, segNum=
         final = result_vector.get_all_added()
         final = coefficients_a * final
         party.eliminate_start_marker(func='tan')
+        party.eliminate_start_marker('Stage4')
         return final
     else:
         assert (x.scalefactor % segNum == 0), 'Unsupported scale for Digit Decomposition!'
@@ -171,5 +184,6 @@ def tan(x: GroupElements, party: SemiHonestParty, file_dict: str = None, segNum=
         back_result = arithmetic_mul(x=result_list[1], y=result_list[3],
                                      party=party, offline_data=file_dict[f'A_Mul_{1}'][party.party_id])
         final = front_result + back_result
+        party.eliminate_start_marker('Stage4')
         party.eliminate_start_marker(func='tan')
         return final

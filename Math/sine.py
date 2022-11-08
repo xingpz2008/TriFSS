@@ -118,7 +118,7 @@ def sin(x: GroupElements, party: SemiHonestParty, file_dict: str = None, segNum=
     Moded_x = Mod(party=party, x=x_, N=GroupElements(2, bitlen=x_.bitlen, scale=x_.scalefactor),
                   offline_pack_file=file_dict['Mod'][party.party_id])
     party.eliminate_start_marker('Stage2')
-
+    party.get_performance_statics()
     # Specialized Transformation
     party.set_start_marker('Stage3')
     Ctn_res = Containment(party=party, x=Moded_x, offline_pack_file=file_dict['Ctn'][party.party_id])
@@ -139,7 +139,7 @@ def sin(x: GroupElements, party: SemiHonestParty, file_dict: str = None, segNum=
         coefficients_c = coefficients_c + Arithmetic_Ctn_c[i] * sin_coefficient[i]['c']
     new_x = x_ * coefficients_b + coefficients_c
     party.eliminate_start_marker('Stage3')
-
+    party.get_performance_statics()
     # Results Retrieval
     party.set_start_marker('Stage4')
     new_x = clear_bits_removal(new_x, 2)
